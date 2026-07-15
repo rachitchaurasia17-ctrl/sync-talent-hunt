@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SYNC — Conductor</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #0c0c12;
+    color: #e0e0e0;
+    min-height: 100vh;
+    padding: 1.5rem;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .header h1 {
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: 0.5rem;
+    background: linear-gradient(135deg, #00d4ff, #7b2ff7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .header .subtitle {
+    font-size: 0.65rem;
+    color: #555;
+    letter-spacing: 0.15rem;
+  }
+  .header .status {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #00c853;
+    display: inline-block;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 50% { opacity: 0.5; } }
+  .status-text { font-size: 0.7rem; color: #888; letter-spacing: 0.1rem; }
+
+  /* Grid layout */
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+  .grid-full { grid-column: 1 / -1; }
+
+  /* Sections */
+  .section {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+    padding: 1.2rem;
+  }
+  .section-title {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.2rem;
+    color: #00d4ff;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+
+  /* Buttons */
+  .btn {
+    padding: 0.55rem 1rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.04);
+    color: #ccc;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.08rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .btn:hover { background: rgba(255,255,255,0.08); border-color: rgba(0,212,255,0.3); }
+  .btn:active { transform: scale(0.97); }
+  .btn.primary {
+    background: linear-gradient(135deg, rgba(0,212,255,0.2), rgba(123,47,247,0.2));
+    border-color: rgba(0,212,255,0.3);
+    color: #00d4ff;
+  }
+  .btn.danger {
+    border-color: rgba(255,60,60,0.3);
+    color: #ff6666;
+  }
+  .btn.danger:hover { background: rgba(255,60,60,0.15); }
+  .btn.success {
+    border-color: rgba(0,200,83,0.3);
+    color: #00c853;
+  }
+  .btn.warning {
+    border-color: rgba(255,170,0,0.3);
+    color: #ffaa00;
+  }
+  .btn.active-state {
+    background: rgba(0,212,255,0.15);
+    border-color: rgba(0,212,255,0.5);
+    color: #00d4ff;
+  }
+  .btn-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.8rem;
+  }
+
+  /* Scene buttons */
+  .scene-btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+  }
+  .scene-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.03);
+    color: #888;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .scene-btn:hover { background: rgba(0,212,255,0.1); border-color: rgba(0,212,255,0.3); }
+  .scene-btn.active { background: rgba(0,212,255,0.2); border-color: #00d4ff; color: #00d4ff; }
+
+  /* Volunteer slots */
+  .vol-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.8rem;
+  }
+  .vol-card {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    padding: 0.8rem;
+    transition: all 0.3s;
+  }
+  .vol-card.connected { border-color: rgba(0,200,83,0.2); }
+  .vol-card.disconnected { border-color: rgba(255,60,60,0.2); opacity: 0.5; }
+  .vol-card.disabled { opacity: 0.3; }
+  .vol-card .vol-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+  .vol-card .vol-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #fff;
+  }
+  .vol-card .vol-role {
+    font-size: 0.6rem;
+    color: #00d4ff;
+    letter-spacing: 0.1rem;
+    text-transform: uppercase;
+  }
+  .vol-card .vol-conn {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #00c853;
+  }
+  .vol-card.disconnected .vol-conn { background: #ff4444; }
+  .vol-card .vol-energy {
+    height: 3px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 2px;
+    margin: 0.5rem 0;
+    overflow: hidden;
+  }
+  .vol-card .vol-energy-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #00d4ff, #7b2ff7);
+    border-radius: 2px;
+    transition: width 0.15s;
+  }
+  .vol-card .vol-actions {
+    display: flex;
+    gap: 0.3rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+  }
+  .vol-card .vol-actions .btn {
+    font-size: 0.55rem;
+    padding: 0.3rem 0.6rem;
+  }
+  .vol-card .vol-meta {
+    font-size: 0.55rem;
+    color: #555;
+    margin-top: 0.3rem;
+  }
+  .vol-card .empty-slot {
+    text-align: center;
+    padding: 1rem;
+    color: #333;
+    font-size: 0.7rem;
+    letter-spacing: 0.1rem;
+  }
+
+  /* Sliders */
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    margin-bottom: 0.6rem;
+  }
+  .slider-row label {
+    font-size: 0.65rem;
+    color: #888;
+    min-width: 100px;
+    letter-spacing: 0.05rem;
+  }
+  .slider-row input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 4px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+    outline: none;
+  }
+  .slider-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #00d4ff;
+    cursor: pointer;
+  }
+  .slider-row .value {
+    font-size: 0.65rem;
+    color: #00d4ff;
+    min-width: 35px;
+    text-align: right;
+  }
+
+  /* QR & Join */
+  .qr-area {
+    text-align: center;
+    padding: 1rem 0;
+  }
+  .qr-area img { max-width: 200px; margin-bottom: 0.8rem; }
+  .qr-area .url {
+    font-size: 0.7rem;
+    color: #00d4ff;
+    word-break: break-all;
+    letter-spacing: 0.05rem;
+  }
+
+  /* Audio status */
+  .audio-status {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+  .audio-stat {
+    font-size: 0.6rem;
+    color: #666;
+    letter-spacing: 0.05rem;
+  }
+  .audio-stat span { color: #00d4ff; }
+
+  /* Role mute grid */
+  .role-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.5rem;
+  }
+  .role-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.04);
+  }
+  .role-row .role-name {
+    font-size: 0.6rem;
+    color: #aaa;
+    letter-spacing: 0.05rem;
+  }
+  .role-row .role-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .role-row .btn { font-size: 0.5rem; padding: 0.2rem 0.5rem; }
+
+  /* Projector preview */
+  .projector-preview {
+    background: #000;
+    border-radius: 8px;
+    aspect-ratio: 16/9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    color: #333;
+    letter-spacing: 0.1rem;
+    margin-bottom: 0.8rem;
+    overflow: hidden;
+    position: relative;
+  }
+  .projector-preview iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    pointer-events: none;
+  }
+
+  /* Scene label */
+  .current-scene {
+    font-size: 0.75rem;
+    color: #00d4ff;
+    letter-spacing: 0.15rem;
+    margin-bottom: 0.8rem;
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <h1>SYNC</h1>
+      <div class="subtitle">CONDUCTOR CONSOLE</div>
+    </div>
+    <div class="status">
+      <span class="status-dot" id="connDot"></span>
+      <span class="status-text" id="connText">Connected</span>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- PERFORMANCE CONTROLS -->
+    <div class="section">
+      <div class="section-title">PERFORMANCE</div>
+      <div class="current-scene" id="sceneLabel">SCENE 1 — OPENING</div>
+      <div class="btn-group">
+        <button class="btn success" id="btnJoinOpen" onclick="toggleJoin()">OPEN JOINING</button>
+        <button class="btn primary" onclick="send('conductorStart')">START</button>
+        <button class="btn" onclick="send('conductorPause')">PAUSE</button>
+        <button class="btn warning" onclick="send('conductorCountdown')">COUNTDOWN</button>
+        <button class="btn primary" onclick="send('conductorFinalDrop')">FINAL DROP</button>
+      </div>
+      <div class="btn-group">
+        <button class="btn" onclick="changeScene(-1)">◀ PREV SCENE</button>
+        <button class="btn" onclick="changeScene(1)">NEXT SCENE ▶</button>
+      </div>
+      <div class="scene-btns" id="sceneBtns"></div>
+      <div class="btn-group" style="margin-top:0.8rem">
+        <button class="btn success" id="btnDemo" onclick="toggleDemo()">RUN DEMO</button>
+        <button class="btn danger" onclick="send('conductorBlackout', {active:true})">BLACKOUT</button>
+        <button class="btn" onclick="send('conductorBlackout', {active:false})">RESTORE</button>
+        <button class="btn danger" onclick="send('conductorEmergencyStop')">⚡ EMERGENCY STOP</button>
+        <button class="btn warning" onclick="send('conductorReset')">RESET</button>
+        <button class="btn danger" onclick="if(confirm('Full reset?')) send('conductorFullReset')">FULL RESET</button>
+      </div>
+    </div>
+
+    <!-- JOIN QR & URL -->
+    <div class="section">
+      <div class="section-title">JOIN — QR CODE</div>
+      <div class="qr-area">
+        <img id="qrImg" src="" alt="QR">
+        <div class="url" id="joinUrl">Loading...</div>
+      </div>
+    </div>
+
+    <!-- VOLUNTEERS -->
+    <div class="section grid-full">
+      <div class="section-title">VOLUNTEERS (<span id="volCount">0</span>/10)</div>
+      <div class="vol-grid" id="volGrid"></div>
+    </div>
+
+    <!-- AUDIO CONTROLS -->
+    <div class="section">
+      <div class="section-title">AUDIO</div>
+      <div class="slider-row">
+        <label>Master Volume</label>
+        <input type="range" min="0" max="100" value="80" id="masterVol" oninput="setMasterVol(this.value)">
+        <span class="value" id="masterVolVal">80%</span>
+      </div>
+      <div class="slider-row">
+        <label>Energy Sensitivity</label>
+        <input type="range" min="3" max="40" value="15" id="sensitivity" oninput="setSensitivity(this.value)">
+        <span class="value" id="sensitivityVal">15</span>
+      </div>
+      <div class="slider-row">
+        <label>Decay Rate</label>
+        <input type="range" min="0.5" max="10" step="0.5" value="2" id="decay" oninput="setDecay(this.value)">
+        <span class="value" id="decayVal">2</span>
+      </div>
+      <div class="btn-group" style="margin-top:0.8rem">
+        <button class="btn danger" onclick="send('conductorPanicMute')">PANIC MUTE</button>
+        <button class="btn success" onclick="send('conductorUnmuteAll')">UNMUTE ALL</button>
+      </div>
+      <div class="audio-status" id="audioStatus">
+        <div class="audio-stat">BGM: <span id="bgmStatus">—</span></div>
+        <div class="audio-stat">Scene: <span id="audioScene">1</span></div>
+      </div>
+    </div>
+
+    <!-- ROLE VOLUMES -->
+    <div class="section">
+      <div class="section-title">ROLE CONTROLS</div>
+      <div class="role-grid" id="roleGrid"></div>
+    </div>
+
+    <!-- PROJECTOR -->
+    <div class="section grid-full">
+      <div class="section-title">PROJECTOR PREVIEW</div>
+      <div class="projector-preview" id="projPreview">
+        <span>Open projector in a new window for full experience</span>
+      </div>
+      <div class="btn-group">
+        <button class="btn primary" onclick="openProjector()">OPEN PROJECTOR ↗</button>
+        <button class="btn" onclick="testCaption()">TEST CAPTION</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    // ============================================================
+    // SYNC Conductor Console
+    // ============================================================
+    const socket = io();
+
+    const ROLES = [
+      'Kick', 'Snare / Clap', 'Hi-Hats / Percussion', 'Bass', 'Chords / Pad',
+      'Main Melody', 'Supporting Melody', 'Effects / Atmosphere', 'Vocal Effects', 'Final Energy / Drop'
+    ];
+    const SCENE_NAMES = [
+      'Opening', 'Joining', 'Interaction', 'Rhythm', 'Foundation',
+      'Melody', 'Effects', 'Silence', 'Final Drop'
+    ];
+
+    let state = null;
+
+    // ============== Init scene buttons ==============
+    const sceneBtns = document.getElementById('sceneBtns');
+    for (let i = 0; i < 9; i++) {
+      const btn = document.createElement('button');
+      btn.className = 'scene-btn';
+      btn.textContent = i + 1;
+      btn.onclick = () => send('conductorScene', { scene: i });
+      btn.title = SCENE_NAMES[i];
+      sceneBtns.appendChild(btn);
+    }
+
+    // ============== Init role controls ==============
+    const roleGrid = document.getElementById('roleGrid');
+    ROLES.forEach((name, i) => {
+      const row = document.createElement('div');
+      row.className = 'role-row';
+      row.id = `role-${i}`;
+      row.innerHTML = `
+        <span class="role-name">${name}</span>
+        <div class="role-controls">
+          <input type="range" min="0" max="100" value="80" style="width:60px;height:3px;" 
+                 oninput="setRoleVol(${i}, this.value)">
+          <button class="btn" id="roleMute-${i}" onclick="toggleRoleMute(${i})">M</button>
+        </div>
+      `;
+      roleGrid.appendChild(row);
+    });
+
+    // ============== Load QR ==============
+    fetch('/api/qr').then(r => r.json()).then(data => {
+      document.getElementById('qrImg').src = data.qr;
+      document.getElementById('joinUrl').textContent = data.url;
+    });
+
+    // ============== Socket events ==============
+    socket.on('connect', () => {
+      document.getElementById('connDot').style.background = '#00c853';
+      document.getElementById('connText').textContent = 'Connected';
+    });
+
+    socket.on('disconnect', () => {
+      document.getElementById('connDot').style.background = '#ff4444';
+      document.getElementById('connText').textContent = 'Disconnected';
+    });
+
+    socket.on('stateSync', (s) => {
+      state = s;
+      updateUI();
+    });
+
+    socket.on('participantTapped', ({ id, roleId, energy, name }) => {
+      // Flash the card
+      const card = document.getElementById(`vol-${id}`);
+      if (card) {
+        card.style.borderColor = 'rgba(0,212,255,0.4)';
+        setTimeout(() => { card.style.borderColor = ''; }, 200);
+      }
+    });
+
+    socket.on('energyUpdate', (data) => {
+      if (!state) return;
+      data.forEach(d => {
+        const vol = state.volunteers.find(v => v.roleId === d.roleId);
+        if (vol) vol.energy = d.energy;
+      });
+      updateVolunteers();
+    });
+
+    // ============== UI Update ==============
+    function updateUI() {
+      if (!state) return;
+
+      // Scene
+      document.getElementById('sceneLabel').textContent = 
+        `SCENE ${state.currentScene + 1} — ${SCENE_NAMES[state.currentScene] || '?'}`.toUpperCase();
+      document.getElementById('audioScene').textContent = state.currentScene + 1;
+
+      // Scene buttons
+      document.querySelectorAll('.scene-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', i === state.currentScene);
+      });
+
+      // Join button
+      const joinBtn = document.getElementById('btnJoinOpen');
+      joinBtn.textContent = state.joinOpen ? 'LOCK JOINING' : 'OPEN JOINING';
+      joinBtn.className = state.joinOpen ? 'btn warning' : 'btn success';
+
+      // Demo button
+      const demoBtn = document.getElementById('btnDemo');
+      demoBtn.textContent = state.demoMode ? 'STOP DEMO' : 'RUN DEMO';
+      demoBtn.className = state.demoMode ? 'btn danger' : 'btn success';
+
+      // Sliders
+      document.getElementById('masterVol').value = state.masterVolume * 100;
+      document.getElementById('masterVolVal').textContent = Math.round(state.masterVolume * 100) + '%';
+      document.getElementById('sensitivity').value = state.energySensitivity;
+      document.getElementById('sensitivityVal').textContent = state.energySensitivity;
+      document.getElementById('decay').value = state.decayRate;
+      document.getElementById('decayVal').textContent = state.decayRate;
+
+      // Role mutes
+      state.roleMutes.forEach((muted, i) => {
+        const btn = document.getElementById(`roleMute-${i}`);
+        if (btn) {
+          btn.className = muted ? 'btn danger' : 'btn';
+          btn.textContent = muted ? 'M' : 'M';
+        }
+      });
+
+      // Volunteers
+      document.getElementById('volCount').textContent = state.volunteers.length;
+      updateVolunteers();
+    }
+
+    function updateVolunteers() {
+      const grid = document.getElementById('volGrid');
+      grid.innerHTML = '';
+
+      for (let i = 0; i < 10; i++) {
+        const vol = state ? state.volunteers[i] : null;
+        const card = document.createElement('div');
+        card.className = 'vol-card';
+        card.id = `vol-${i}`;
+
+        if (!vol) {
+          card.innerHTML = `<div class="empty-slot">SLOT ${i + 1} — ${ROLES[i]}<br><span style="color:#333;font-size:0.6rem">EMPTY</span></div>`;
+        } else {
+          card.className += vol.connected ? ' connected' : ' disconnected';
+          if (!vol.enabled) card.className += ' disabled';
+
+          const lastTap = vol.lastTap ? new Date(vol.lastTap).toLocaleTimeString() : '—';
+          card.innerHTML = `
+            <div class="vol-header">
+              <div>
+                <div class="vol-name">${vol.name}</div>
+                <div class="vol-role">${ROLES[vol.roleId]}</div>
+              </div>
+              <div class="vol-conn"></div>
+            </div>
+            <div class="vol-energy">
+              <div class="vol-energy-fill" style="width:${vol.energy}%"></div>
+            </div>
+            <div class="vol-meta">
+              Energy: ${Math.round(vol.energy)}% · Last tap: ${lastTap}
+              ${vol.muted ? ' · MUTED' : ''}${!vol.enabled ? ' · DISABLED' : ''}
+            </div>
+            <div class="vol-actions">
+              <button class="btn" onclick="send('conductorSimulateTap', {id:${vol.id}})">TAP</button>
+              <button class="btn" onclick="send('conductorHighlight', {id:${vol.id}})">HIGHLIGHT</button>
+              <button class="btn ${vol.muted ? 'danger' : ''}" onclick="send('conductorVolunteerMute', {id:${vol.id}, muted:${!vol.muted}})">
+                ${vol.muted ? 'UNMUTE' : 'MUTE'}
+              </button>
+              <button class="btn ${!vol.enabled ? 'success' : 'warning'}" onclick="send('conductorVolunteerEnable', {id:${vol.id}, enabled:${!vol.enabled}})">
+                ${vol.enabled ? 'DISABLE' : 'ENABLE'}
+              </button>
+              <button class="btn danger" onclick="if(confirm('Remove ${vol.name}?')) send('conductorVolunteerRemove', {id:${vol.id}})">REMOVE</button>
+              <select style="font-size:0.55rem;background:#1a1a22;color:#aaa;border:1px solid rgba(255,255,255,0.1);border-radius:4px;padding:0.2rem" 
+                      onchange="send('conductorAssignRole', {id:${vol.id}, roleId:parseInt(this.value)})">
+                ${ROLES.map((r, ri) => `<option value="${ri}" ${ri === vol.roleId ? 'selected' : ''}>${r}</option>`).join('')}
+              </select>
+            </div>
+          `;
+        }
+        grid.appendChild(card);
+      }
+    }
+
+    // ============== Actions ==============
+    function send(event, data = {}) {
+      socket.emit(event, data);
+    }
+
+    function toggleJoin() {
+      if (state) send('conductorSetJoinOpen', { open: !state.joinOpen });
+    }
+
+    function toggleDemo() {
+      if (state) send('conductorDemo', { active: !state.demoMode });
+    }
+
+    function changeScene(dir) {
+      if (!state) return;
+      const next = Math.max(0, Math.min(8, state.currentScene + dir));
+      send('conductorScene', { scene: next });
+    }
+
+    function setMasterVol(v) {
+      document.getElementById('masterVolVal').textContent = v + '%';
+      send('conductorMasterVolume', { volume: v / 100 });
+    }
+
+    function setSensitivity(v) {
+      document.getElementById('sensitivityVal').textContent = v;
+      send('conductorSensitivity', { value: parseInt(v) });
+    }
+
+    function setDecay(v) {
+      document.getElementById('decayVal').textContent = v;
+      send('conductorDecayRate', { value: parseFloat(v) });
+    }
+
+    function setRoleVol(roleId, v) {
+      send('conductorRoleVolume', { roleId, volume: v / 100 });
+    }
+
+    function toggleRoleMute(roleId) {
+      if (!state) return;
+      send('conductorRoleMute', { roleId, muted: !state.roleMutes[roleId] });
+    }
+
+    function openProjector() {
+      window.open('/projector', 'sync_projector', 'fullscreen=yes');
+    }
+
+    function testCaption() {
+      send('conductorCaption', { text: 'THIS IS A TEST CAPTION' });
+    }
+
+    // ============== DEMO MODE ==============
+    // Demo simulation is handled server-side (server.js creates volunteers,
+    // simulates taps with rhythmic patterns, and auto-advances scenes).
+    // The conductor just sends the toggle command via toggleDemo().
+
+    // ============== Keyboard ==============
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+      switch (e.key) {
+        case 'ArrowRight':
+        case ' ':
+          e.preventDefault();
+          changeScene(1);
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          changeScene(-1);
+          break;
+        case '1': case '2': case '3': case '4': case '5':
+        case '6': case '7': case '8': case '9':
+          send('conductorScene', { scene: parseInt(e.key) - 1 });
+          break;
+        case 'd':
+        case 'D':
+          toggleDemo();
+          break;
+        case 'Escape':
+          send('conductorEmergencyStop');
+          break;
+        case 'f':
+        case 'F':
+          send('conductorFinalDrop');
+          break;
+      }
+    });
+
+    console.log('[SYNC Conductor] Ready');
+  </script>
+</body>
+</html>

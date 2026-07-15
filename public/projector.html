@@ -1,0 +1,1436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SYNC — Projector</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;600;800;900&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; cursor: none; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #050508;
+    color: #fff;
+    position: relative;
+  }
+  /* ============== CANVAS & LAYERS ============== */
+  canvas#bgCanvas { position: fixed; inset: 0; z-index: 0; }
+  .main-layer { position: fixed; inset: 0; z-index: 1; display: flex; align-items: center; justify-content: center; }
+
+  /* ============== CENTRE LOGO ============== */
+  .logo-container {
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+    transition: opacity 0.8s, filter 0.8s;
+  }
+  .logo-container img {
+    width: 120px;
+    height: 120px;
+    object-fit: contain;
+    filter: invert(1) contrast(3) brightness(0.3) saturate(0);
+    mix-blend-mode: screen;
+    transition: filter 1.5s ease, transform 0.3s;
+  }
+  .logo-container.awakened img {
+    filter: invert(1) contrast(3) brightness(1.2) saturate(0);
+  }
+  .logo-glow {
+    position: absolute;
+    width: 240px;
+    height: 240px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,212,255,0.08) 0%, transparent 70%);
+    transition: all 0.5s;
+    pointer-events: none;
+  }
+  .logo-pulse {
+    position: absolute;
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    border: 1px solid rgba(0,212,255,0.0);
+    pointer-events: none;
+  }
+
+  /* ============== VOLUNTEER CORES ============== */
+  .core {
+    position: absolute;
+    width: 100px;
+    height: 100px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.5s;
+    z-index: 15;
+  }
+  .core-circle {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: all 0.15s;
+  }
+  .core-circle .inner {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,212,255,0.2), transparent);
+    transition: all 0.15s;
+  }
+  .core.energized .core-circle {
+    border-color: rgba(0,212,255,0.4);
+    box-shadow: 0 0 20px rgba(0,212,255,0.15);
+  }
+  .core.energized .core-circle .inner {
+    background: radial-gradient(circle, rgba(0,212,255,0.6), rgba(123,47,247,0.2));
+  }
+  .core.high-energy .core-circle {
+    border-color: rgba(0,212,255,0.7);
+    box-shadow: 0 0 40px rgba(0,212,255,0.3), 0 0 80px rgba(123,47,247,0.15);
+  }
+  .core.high-energy .core-circle .inner {
+    background: radial-gradient(circle, rgba(0,212,255,0.9), rgba(123,47,247,0.5));
+  }
+  .core.disabled { opacity: 0.15; }
+  .core.disconnected { opacity: 0.1; }
+  .core-name {
+    margin-top: 6px;
+    font-size: 0.55rem;
+    letter-spacing: 0.15rem;
+    color: rgba(255,255,255,0.3);
+    text-transform: uppercase;
+    white-space: nowrap;
+    transition: color 0.3s;
+  }
+  .core-role {
+    font-size: 0.45rem;
+    letter-spacing: 0.12rem;
+    color: rgba(0,212,255,0.3);
+    text-transform: uppercase;
+    white-space: nowrap;
+    transition: color 0.3s;
+  }
+  .core.energized .core-name { color: rgba(255,255,255,0.6); }
+  .core.energized .core-role { color: rgba(0,212,255,0.6); }
+  .core.high-energy .core-name { color: rgba(255,255,255,0.9); }
+  .core.high-energy .core-role { color: rgba(0,212,255,0.9); }
+
+  /* Core ring (rotating) */
+  .core-ring {
+    position: absolute;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    border: 1px solid transparent;
+    border-top-color: rgba(0,212,255,0.0);
+    animation: coreRotate 3s linear infinite;
+    pointer-events: none;
+    transition: border-top-color 0.3s;
+  }
+  .core.energized .core-ring { border-top-color: rgba(0,212,255,0.3); }
+  .core.high-energy .core-ring {
+    border-top-color: rgba(0,212,255,0.6);
+    animation-duration: 1s;
+  }
+  @keyframes coreRotate { to { transform: rotate(360deg); } }
+
+  /* Core ripple on tap */
+  .core-ripple {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(0,212,255,0.5);
+    animation: coreRipple 0.6s ease-out forwards;
+    pointer-events: none;
+  }
+  @keyframes coreRipple {
+    0% { width: 50px; height: 50px; opacity: 0.7; }
+    100% { width: 120px; height: 120px; opacity: 0; }
+  }
+
+  /* ============== BEAM from core to centre ============== */
+  .beam-canvas { position: fixed; inset: 0; z-index: 10; pointer-events: none; }
+
+  /* ============== CAPTIONS ============== */
+  .caption-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    pointer-events: none;
+  }
+  .caption-text {
+    font-size: 2.5rem;
+    font-weight: 800;
+    letter-spacing: 0.4rem;
+    text-transform: uppercase;
+    background: linear-gradient(135deg, #00d4ff, #7b2ff7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    opacity: 0;
+    transform: scale(0.9);
+    transition: all 0.5s ease;
+    text-align: center;
+    max-width: 80vw;
+    line-height: 1.4;
+  }
+  .caption-text.show {
+    opacity: 1;
+    transform: scale(1);
+  }
+  .caption-text.subtitle {
+    font-size: 1.2rem;
+    font-weight: 300;
+    letter-spacing: 0.2rem;
+  }
+
+  /* ============== SCENE OVERLAYS ============== */
+  .scene-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 40;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.8s;
+  }
+  .scene-overlay.active { opacity: 1; }
+
+  .sync-title {
+    font-size: 7rem;
+    font-weight: 900;
+    letter-spacing: 2rem;
+    background: linear-gradient(135deg, #00d4ff, #7b2ff7, #ff2d95);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    opacity: 0;
+    animation: fadeInUp 1.5s ease forwards;
+  }
+  @keyframes fadeInUp {
+    0% { opacity: 0; transform: translateY(20px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  .sync-question {
+    font-size: 1.3rem;
+    font-weight: 200;
+    letter-spacing: 0.3rem;
+    color: rgba(255,255,255,0.5);
+    margin-top: 1.5rem;
+    opacity: 0;
+    animation: fadeInUp 1.5s ease 1.5s forwards;
+  }
+
+  /* Connected count */
+  .connected-count {
+    position: fixed;
+    bottom: 3rem;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.9rem;
+    letter-spacing: 0.3rem;
+    color: rgba(255,255,255,0.3);
+    z-index: 30;
+    transition: opacity 0.5s;
+  }
+
+  /* Countdown */
+  .countdown {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 60;
+    pointer-events: none;
+  }
+  .countdown.active { display: flex; }
+  .countdown-num {
+    font-size: 12rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, #00d4ff, #ff2d95);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: countPulse 0.8s ease;
+  }
+  @keyframes countPulse {
+    0% { transform: scale(1.5); opacity: 0; }
+    30% { transform: scale(1); opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  /* Final shockwave */
+  .shockwave {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    border: 3px solid rgba(0,212,255,0.6);
+    animation: shockExpand 1.5s ease-out forwards;
+    pointer-events: none;
+    z-index: 55;
+  }
+  @keyframes shockExpand {
+    0% { width: 0; height: 0; opacity: 1; }
+    100% { width: 200vmax; height: 200vmax; opacity: 0; }
+  }
+
+  /* Final credits */
+  .final-credits {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 45;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 1.5s;
+  }
+  .final-credits.show { opacity: 1; }
+  .final-credits .title {
+    font-size: 3rem;
+    font-weight: 800;
+    letter-spacing: 1rem;
+    background: linear-gradient(135deg, #00d4ff, #7b2ff7, #ff2d95);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 2rem;
+  }
+  .final-credits .line {
+    font-size: 0.9rem;
+    font-weight: 300;
+    color: rgba(255,255,255,0.5);
+    letter-spacing: 0.2rem;
+    margin: 0.3rem 0;
+  }
+  .final-credits .line.accent { color: rgba(0,212,255,0.7); }
+
+  /* Opening scene overlay */
+  .scene-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(5,5,8,0.85);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 1s;
+  }
+  .scene-overlay.active { opacity: 1; }
+  .sync-title {
+    font-size: 8rem;
+    font-weight: 900;
+    letter-spacing: 2rem;
+    background: linear-gradient(135deg, #00d4ff 0%, #7b2ff7 40%, #ff2d95 70%, #00d4ff 100%);
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: gradientShift 4s ease infinite;
+    transition: opacity 1.5s ease;
+    text-shadow: 0 0 80px rgba(0,212,255,0.3);
+  }
+  @keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  .sync-question {
+    font-size: 1.3rem;
+    font-weight: 200;
+    color: rgba(255,255,255,0.6);
+    letter-spacing: 0.25rem;
+    margin-top: 2rem;
+    transition: opacity 1.5s ease;
+  }
+
+  /* Blackout */
+  .blackout-overlay {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    z-index: 200;
+    display: none;
+  }
+  .blackout-overlay.active { display: block; }
+
+  /* Audio unlock */
+  .audio-unlock {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    padding: 0.8rem 1.5rem;
+    border-radius: 10px;
+    border: 1px solid rgba(0,212,255,0.3);
+    background: rgba(0,20,40,0.8);
+    color: #00d4ff;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.1rem;
+    cursor: pointer;
+    z-index: 100;
+    transition: all 0.3s;
+  }
+  .audio-unlock:hover { background: rgba(0,40,80,0.9); }
+  .audio-unlock.hidden { display: none; }
+
+  /* Scene indicator */
+  .scene-indicator {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    font-size: 0.6rem;
+    color: rgba(255,255,255,0.1);
+    letter-spacing: 0.1rem;
+    z-index: 100;
+  }
+</style>
+</head>
+<body>
+
+  <canvas id="bgCanvas"></canvas>
+  <canvas class="beam-canvas" id="beamCanvas"></canvas>
+
+  <div class="main-layer" id="mainLayer">
+    <!-- Centre logo -->
+    <div class="logo-container" id="logoContainer">
+      <div class="logo-glow" id="logoGlow"></div>
+      <div class="logo-pulse" id="logoPulse"></div>
+      <img src="/api/logo" alt="NMIMS" id="logoImg">
+    </div>
+  </div>
+
+  <!-- 10 Volunteer cores (positioned by JS) -->
+  <div id="coresContainer"></div>
+
+  <!-- Caption overlay -->
+  <div class="caption-overlay">
+    <div class="caption-text" id="captionText"></div>
+  </div>
+
+  <!-- Connected count -->
+  <div class="connected-count" id="connCount"></div>
+
+  <!-- Countdown -->
+  <div class="countdown" id="countdown">
+    <div class="countdown-num" id="countdownNum">3</div>
+  </div>
+
+  <!-- Final credits -->
+  <div class="final-credits" id="finalCredits">
+    <div class="title">SYNC COMPLETE</div>
+    <div class="line" style="margin-bottom:1.5rem">An Interactive Software Performance</div>
+    <div class="line accent">by Rachit Chaurasia</div>
+    <div class="line">with 10 NMIMS Volunteers</div>
+  </div>
+
+  <!-- Opening overlay -->
+  <div class="scene-overlay" id="openingOverlay" style="z-index:42">
+    <div class="sync-title" id="openingTitle" style="opacity:0">SYNC</div>
+    <div class="sync-question" id="openingQuestion" style="opacity:0">Can ten strangers become one musician?</div>
+  </div>
+
+  <!-- Blackout -->
+  <div class="blackout-overlay" id="blackout"></div>
+
+  <!-- Audio unlock -->
+  <button class="audio-unlock" id="audioUnlock" onclick="unlockAudio()">🔊 UNLOCK AUDIO</button>
+
+  <!-- Scene indicator -->
+  <div class="scene-indicator" id="sceneIndicator">SCENE 1</div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    // ============================================================
+    // SYNC Projector — Cinematic Audience Experience
+    // ============================================================
+    const socket = io();
+
+    // ============== DOM refs ==============
+    const bgCanvas = document.getElementById('bgCanvas');
+    const bgCtx = bgCanvas.getContext('2d');
+    const beamCanvas = document.getElementById('beamCanvas');
+    const beamCtx = beamCanvas.getContext('2d');
+    const logoContainer = document.getElementById('logoContainer');
+    const logoImg = document.getElementById('logoImg');
+    const logoGlow = document.getElementById('logoGlow');
+    const captionText = document.getElementById('captionText');
+    const connCount = document.getElementById('connCount');
+    const countdownEl = document.getElementById('countdown');
+    const countdownNum = document.getElementById('countdownNum');
+    const finalCredits = document.getElementById('finalCredits');
+    const blackout = document.getElementById('blackout');
+    const audioUnlockBtn = document.getElementById('audioUnlock');
+    const sceneIndicator = document.getElementById('sceneIndicator');
+    const coresContainer = document.getElementById('coresContainer');
+    const openingOverlay = document.getElementById('openingOverlay');
+    const openingTitle = document.getElementById('openingTitle');
+    const openingQuestion = document.getElementById('openingQuestion');
+
+    // ============== State ==============
+    let W, H, cx, cy;
+    let currentScene = 0;
+    let volunteers = [];
+    let coreEls = [];
+    let particles = [];
+    let beamParticles = [];
+    let ambientParticles = [];
+    let audioUnlocked = false;
+
+    // ============== ROLES DATA ==============
+    const ROLES = [
+      'Kick', 'Snare / Clap', 'Hi-Hats / Percussion', 'Bass', 'Chords / Pad',
+      'Main Melody', 'Supporting Melody', 'Effects / Atmosphere', 'Vocal Effects', 'Final Energy / Drop'
+    ];
+    const ROLE_COLORS = [
+      '#ff3366', '#ff6633', '#ffaa00', '#00d4ff', '#7b2ff7',
+      '#00ff88', '#33ccff', '#aa44ff', '#ff44aa', '#ffffff'
+    ];
+
+    // Energy state for each of the 10 slots
+    let energies = new Array(10).fill(0);
+    let tapFlash = new Array(10).fill(0);
+
+    // ============== Canvas sizing ==============
+    function resize() {
+      W = window.innerWidth; H = window.innerHeight;
+      cx = W / 2; cy = H / 2;
+      bgCanvas.width = W; bgCanvas.height = H;
+      beamCanvas.width = W; beamCanvas.height = H;
+      positionCores();
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // ============== Create 10 core elements ==============
+    function createCores() {
+      coresContainer.innerHTML = '';
+      coreEls = [];
+      for (let i = 0; i < 10; i++) {
+        const div = document.createElement('div');
+        div.className = 'core';
+        div.id = `core-${i}`;
+        div.innerHTML = `
+          <div class="core-ring"></div>
+          <div class="core-circle"><div class="inner"></div></div>
+          <div class="core-name" id="coreName-${i}">—</div>
+          <div class="core-role" id="coreRole-${i}">${ROLES[i]}</div>
+        `;
+        coresContainer.appendChild(div);
+        coreEls.push(div);
+      }
+    }
+    createCores();
+
+    // ============== Position cores in a circle ==============
+    function positionCores() {
+      const radius = Math.min(W, H) * 0.33;
+      coreEls.forEach((el, i) => {
+        const angle = (i / 10) * Math.PI * 2 - Math.PI / 2;
+        const x = cx + Math.cos(angle) * radius - 50;
+        const y = cy + Math.sin(angle) * radius - 50;
+        el.style.left = x + 'px';
+        el.style.top = y + 'px';
+        el.dataset.angle = angle;
+        el.dataset.cx = (cx + Math.cos(angle) * radius) + '';
+        el.dataset.cy = (cy + Math.sin(angle) * radius) + '';
+      });
+    }
+
+    // ============== AUDIO ENGINE ==============
+    let audioCtx, masterGain;
+    let bgmBuffer = null;
+    let layers = [];      // BGM-filtered layers: { source, gain, filter, config }
+    let synthLayers = [];  // Supplementary synth layers: { nodes[], gain }
+    let synthStarted = false;
+
+    // Filter configs for each role — applied to BGM copies
+    const LAYER_CONFIGS = [
+      // 0: Kick — sub-bass from BGM
+      { type: 'lowpass', freq: 100, Q: 6, gainBase: 0.7 },
+      // 1: Snare — mid-range noise band
+      { type: 'bandpass', freq: 1800, Q: 3, gainBase: 0.5 },
+      // 2: Hi-Hats — high shimmer
+      { type: 'highpass', freq: 7000, Q: 1.5, gainBase: 0.35 },
+      // 3: Bass — low-mid warmth
+      { type: 'lowpass', freq: 220, Q: 4, gainBase: 0.65 },
+      // 4: Chords/Pad — wide mid
+      { type: 'bandpass', freq: 700, Q: 1.2, gainBase: 0.45 },
+      // 5: Main Melody — presence band
+      { type: 'bandpass', freq: 1400, Q: 1.8, gainBase: 0.55 },
+      // 6: Supporting Melody — upper mid
+      { type: 'bandpass', freq: 2800, Q: 1.5, gainBase: 0.45 },
+      // 7: Effects — airy high
+      { type: 'highpass', freq: 4500, Q: 2, gainBase: 0.35 },
+      // 8: Vocal Effects — voice band
+      { type: 'bandpass', freq: 1100, Q: 2.5, gainBase: 0.45 },
+      // 9: Final Energy — full mix (lowshelf for warmth)
+      { type: 'lowshelf', freq: 400, Q: 1, gainBase: 0.75 }
+    ];
+
+    async function initAudio() {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      masterGain = audioCtx.createGain();
+      masterGain.gain.value = 0.8;
+      masterGain.connect(audioCtx.destination);
+
+      // Load BGM
+      try {
+        const response = await fetch('/api/bgm');
+        const arrayBuffer = await response.arrayBuffer();
+        bgmBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        console.log('[SYNC Audio] BGM loaded:', bgmBuffer.duration.toFixed(1) + 's');
+      } catch (e) {
+        console.error('[SYNC Audio] Failed to load BGM:', e);
+      }
+    }
+
+    function startAudioLayers() {
+      if (!bgmBuffer || layers.length > 0) return;
+
+      // === BGM filtered layers ===
+      LAYER_CONFIGS.forEach((config, i) => {
+        const source = audioCtx.createBufferSource();
+        source.buffer = bgmBuffer;
+        source.loop = true;
+
+        const filter = audioCtx.createBiquadFilter();
+        filter.type = config.type;
+        filter.frequency.value = config.freq;
+        filter.Q.value = config.Q;
+
+        const gain = audioCtx.createGain();
+        gain.gain.value = 0;
+
+        source.connect(filter);
+        filter.connect(gain);
+        gain.connect(masterGain);
+        source.start(0);
+
+        layers.push({ source, filter, gain, config });
+      });
+
+      // === Supplementary synth layers ===
+      startSynthLayers();
+
+      console.log('[SYNC Audio] All layers + synths started');
+    }
+
+    // Creates continuous synth oscillators for roles that need more clarity
+    function startSynthLayers() {
+      if (synthStarted) return;
+      synthStarted = true;
+      synthLayers = [];
+
+      // Helper: create a gain node at 0 connected to master
+      function makeGain() {
+        const g = audioCtx.createGain();
+        g.gain.value = 0;
+        g.connect(masterGain);
+        return g;
+      }
+
+      // --- Role 0: Kick — synthesized kick drum loop ---
+      // Kick uses per-tap playSynthTap instead of continuous
+      synthLayers.push({ gain: makeGain(), nodes: [], type: 'tap-only' });
+
+      // --- Role 1: Snare — per-tap only ---
+      synthLayers.push({ gain: makeGain(), nodes: [], type: 'tap-only' });
+
+      // --- Role 2: Hi-Hat — per-tap only ---
+      synthLayers.push({ gain: makeGain(), nodes: [], type: 'tap-only' });
+
+      // --- Role 3: Bass — continuous sub bass oscillator ---
+      {
+        const g = makeGain();
+        const osc = audioCtx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = 55; // A1
+        const osc2 = audioCtx.createOscillator();
+        osc2.type = 'triangle';
+        osc2.frequency.value = 110; // A2 octave
+        const subGain = audioCtx.createGain();
+        subGain.gain.value = 0.6;
+        osc.connect(g);
+        osc2.connect(subGain);
+        subGain.connect(g);
+        osc.start();
+        osc2.start();
+        synthLayers.push({ gain: g, nodes: [osc, osc2], type: 'continuous', maxVol: 0.18 });
+      }
+
+      // --- Role 4: Chords/Pad — detuned saw pad ---
+      {
+        const g = makeGain();
+        const freqs = [220, 277.18, 329.63, 440]; // Am chord: A3, C#4, E4, A4
+        const oscs = freqs.map(f => {
+          const o = audioCtx.createOscillator();
+          o.type = 'sawtooth';
+          o.frequency.value = f;
+          // Slight detune for warmth
+          o.detune.value = (Math.random() - 0.5) * 12;
+          const lpf = audioCtx.createBiquadFilter();
+          lpf.type = 'lowpass';
+          lpf.frequency.value = 1200;
+          lpf.Q.value = 0.7;
+          o.connect(lpf);
+          lpf.connect(g);
+          o.start();
+          return o;
+        });
+        synthLayers.push({ gain: g, nodes: oscs, type: 'continuous', maxVol: 0.08 });
+      }
+
+      // --- Role 5: Main Melody — singing square lead ---
+      {
+        const g = makeGain();
+        const osc = audioCtx.createOscillator();
+        osc.type = 'square';
+        osc.frequency.value = 440; // A4
+        const lpf = audioCtx.createBiquadFilter();
+        lpf.type = 'lowpass';
+        lpf.frequency.value = 2000;
+        osc.connect(lpf);
+        lpf.connect(g);
+        osc.start();
+        // LFO for vibrato
+        const lfo = audioCtx.createOscillator();
+        lfo.frequency.value = 5;
+        const lfoGain = audioCtx.createGain();
+        lfoGain.gain.value = 8;
+        lfo.connect(lfoGain);
+        lfoGain.connect(osc.frequency);
+        lfo.start();
+        synthLayers.push({ gain: g, nodes: [osc, lfo], type: 'continuous', maxVol: 0.07 });
+      }
+
+      // --- Role 6: Supporting Melody — triangle arpeggio-ish ---
+      {
+        const g = makeGain();
+        const osc = audioCtx.createOscillator();
+        osc.type = 'triangle';
+        osc.frequency.value = 659.25; // E5
+        const lpf = audioCtx.createBiquadFilter();
+        lpf.type = 'lowpass';
+        lpf.frequency.value = 3000;
+        osc.connect(lpf);
+        lpf.connect(g);
+        osc.start();
+        // Gentle tremolo
+        const trem = audioCtx.createOscillator();
+        trem.frequency.value = 3;
+        const tremG = audioCtx.createGain();
+        tremG.gain.value = 0.3;
+        trem.connect(tremG);
+        tremG.connect(g.gain);
+        trem.start();
+        synthLayers.push({ gain: g, nodes: [osc, trem], type: 'continuous', maxVol: 0.06 });
+      }
+
+      // --- Role 7: Effects / Atmosphere — filtered noise ---
+      {
+        const g = makeGain();
+        const bufSize = audioCtx.sampleRate * 2;
+        const noiseBuf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
+        const data = noiseBuf.getChannelData(0);
+        for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * 0.15;
+        const noise = audioCtx.createBufferSource();
+        noise.buffer = noiseBuf;
+        noise.loop = true;
+        const bpf = audioCtx.createBiquadFilter();
+        bpf.type = 'bandpass';
+        bpf.frequency.value = 3000;
+        bpf.Q.value = 5;
+        // Sweep the filter for atmosphere
+        const sweepLFO = audioCtx.createOscillator();
+        sweepLFO.frequency.value = 0.15;
+        const sweepGain = audioCtx.createGain();
+        sweepGain.gain.value = 2000;
+        sweepLFO.connect(sweepGain);
+        sweepGain.connect(bpf.frequency);
+        sweepLFO.start();
+        noise.connect(bpf);
+        bpf.connect(g);
+        noise.start();
+        synthLayers.push({ gain: g, nodes: [noise, sweepLFO], type: 'continuous', maxVol: 0.10 });
+      }
+
+      // --- Role 8: Vocal Effects — formant-like resonances ---
+      {
+        const g = makeGain();
+        const osc = audioCtx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.value = 220;
+        // Two formant filters
+        const f1 = audioCtx.createBiquadFilter();
+        f1.type = 'bandpass';
+        f1.frequency.value = 800;
+        f1.Q.value = 8;
+        const f2 = audioCtx.createBiquadFilter();
+        f2.type = 'bandpass';
+        f2.frequency.value = 1200;
+        f2.Q.value = 8;
+        const merge = audioCtx.createGain();
+        merge.gain.value = 0.5;
+        osc.connect(f1);
+        osc.connect(f2);
+        f1.connect(merge);
+        f2.connect(merge);
+        merge.connect(g);
+        osc.start();
+        // Slow pitch modulation
+        const pitchLFO = audioCtx.createOscillator();
+        pitchLFO.frequency.value = 0.3;
+        const pitchG = audioCtx.createGain();
+        pitchG.gain.value = 30;
+        pitchLFO.connect(pitchG);
+        pitchG.connect(osc.frequency);
+        pitchLFO.start();
+        synthLayers.push({ gain: g, nodes: [osc, pitchLFO], type: 'continuous', maxVol: 0.06 });
+      }
+
+      // --- Role 9: Final Energy / Drop — no extra synth (uses full BGM) ---
+      synthLayers.push({ gain: makeGain(), nodes: [], type: 'none' });
+    }
+
+    function updateLayerVolumes() {
+      if (!audioCtx || layers.length === 0) return;
+      const now = audioCtx.currentTime;
+
+      layers.forEach((layer, i) => {
+        const energy = energies[i] || 0;
+        // Map energy to gain: 0-10% = 0, 10-100% = smooth scale
+        let vol = 0;
+        if (energy > 10) {
+          vol = ((energy - 10) / 90) * layer.config.gainBase;
+        }
+        // Smooth ramp for BGM layer
+        layer.gain.gain.cancelScheduledValues(now);
+        layer.gain.gain.setValueAtTime(layer.gain.gain.value, now);
+        layer.gain.gain.linearRampToValueAtTime(vol, now + 0.08);
+
+        // Also ramp synth layers if they exist
+        if (synthLayers[i] && synthLayers[i].type === 'continuous') {
+          const synthVol = energy > 10 ? ((energy - 10) / 90) * (synthLayers[i].maxVol || 0.1) : 0;
+          synthLayers[i].gain.gain.cancelScheduledValues(now);
+          synthLayers[i].gain.gain.setValueAtTime(synthLayers[i].gain.gain.value, now);
+          synthLayers[i].gain.gain.linearRampToValueAtTime(synthVol, now + 0.12);
+        }
+      });
+    }
+
+    function setMasterVolume(v) {
+      if (masterGain) {
+        const now = audioCtx.currentTime;
+        masterGain.gain.setValueAtTime(masterGain.gain.value, now);
+        masterGain.gain.linearRampToValueAtTime(v, now + 0.05);
+      }
+    }
+
+    // Synth tap sounds for immediate feedback
+    function playSynthTap(roleId) {
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+      const energy = energies[roleId] || 0;
+      const vol = Math.min(0.15, energy / 500);
+
+      if (roleId === 0) { // Kick
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(40, now + 0.1);
+        g.gain.setValueAtTime(vol, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+        osc.connect(g);
+        g.connect(masterGain);
+        osc.start(now);
+        osc.stop(now + 0.2);
+      } else if (roleId === 1) { // Snare
+        const bufferSize = audioCtx.sampleRate * 0.1;
+        const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let j = 0; j < bufferSize; j++) data[j] = (Math.random() * 2 - 1) * 0.3;
+        const noise = audioCtx.createBufferSource();
+        noise.buffer = buffer;
+        const g = audioCtx.createGain();
+        const f = audioCtx.createBiquadFilter();
+        f.type = 'highpass';
+        f.frequency.value = 2000;
+        g.gain.setValueAtTime(vol, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+        noise.connect(f);
+        f.connect(g);
+        g.connect(masterGain);
+        noise.start(now);
+        noise.stop(now + 0.1);
+      } else if (roleId === 2) { // Hi-hat
+        const bufferSize = audioCtx.sampleRate * 0.05;
+        const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let j = 0; j < bufferSize; j++) data[j] = (Math.random() * 2 - 1) * 0.2;
+        const noise = audioCtx.createBufferSource();
+        noise.buffer = buffer;
+        const g = audioCtx.createGain();
+        const f = audioCtx.createBiquadFilter();
+        f.type = 'highpass';
+        f.frequency.value = 8000;
+        g.gain.setValueAtTime(vol * 0.5, now);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+        noise.connect(f);
+        f.connect(g);
+        g.connect(masterGain);
+        noise.start(now);
+        noise.stop(now + 0.05);
+      }
+    }
+
+    function unlockAudio() {
+      initAudio().then(() => {
+        audioUnlocked = true;
+        audioUnlockBtn.classList.add('hidden');
+        console.log('[SYNC Audio] Unlocked');
+      });
+    }
+
+    // ============== AMBIENT PARTICLES ==============
+    function initAmbientParticles() {
+      ambientParticles = [];
+      for (let i = 0; i < 60; i++) {
+        ambientParticles.push({
+          x: Math.random() * W,
+          y: Math.random() * H,
+          vx: (Math.random() - 0.5) * 0.3,
+          vy: (Math.random() - 0.5) * 0.3,
+          r: Math.random() * 1.5 + 0.5,
+          a: Math.random() * 0.15 + 0.02,
+          color: ROLE_COLORS[Math.floor(Math.random() * ROLE_COLORS.length)]
+        });
+      }
+    }
+    initAmbientParticles();
+
+    // ============== BEAM PARTICLES ==============
+    function spawnBeamParticle(coreIndex) {
+      const coreEl = coreEls[coreIndex];
+      if (!coreEl) return;
+      const sx = parseFloat(coreEl.dataset.cx);
+      const sy = parseFloat(coreEl.dataset.cy);
+      const color = ROLE_COLORS[coreIndex];
+      for (let i = 0; i < 3; i++) {
+        beamParticles.push({
+          x: sx + (Math.random() - 0.5) * 10,
+          y: sy + (Math.random() - 0.5) * 10,
+          tx: cx,
+          ty: cy,
+          progress: 0,
+          speed: 0.02 + Math.random() * 0.02,
+          r: 2 + Math.random() * 2,
+          color: color,
+          a: 0.8
+        });
+      }
+    }
+
+    // ============== RENDER LOOP ==============
+    let lastTime = 0;
+    function render(time) {
+      const dt = (time - lastTime) / 1000;
+      lastTime = time;
+
+      // Clear canvases
+      bgCtx.fillStyle = 'rgba(5,5,8,0.15)';
+      bgCtx.fillRect(0, 0, W, H);
+      beamCtx.clearRect(0, 0, W, H);
+
+      // Draw ambient particles
+      ambientParticles.forEach(p => {
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.x < 0) p.x = W;
+        if (p.x > W) p.x = 0;
+        if (p.y < 0) p.y = H;
+        if (p.y > H) p.y = 0;
+        bgCtx.beginPath();
+        bgCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        bgCtx.fillStyle = p.color;
+        bgCtx.globalAlpha = p.a;
+        bgCtx.fill();
+      });
+      bgCtx.globalAlpha = 1;
+
+      // Draw beam particles
+      beamParticles.forEach((p, idx) => {
+        p.progress += p.speed;
+        if (p.progress >= 1) {
+          beamParticles.splice(idx, 1);
+          return;
+        }
+        const t = p.progress;
+        const ease = t * t; // ease-in
+        p.x = p.x + (p.tx - p.x) * p.speed * 2;
+        p.y = p.y + (p.ty - p.y) * p.speed * 2;
+        beamCtx.beginPath();
+        beamCtx.arc(p.x, p.y, p.r * (1 - t * 0.5), 0, Math.PI * 2);
+        beamCtx.fillStyle = p.color;
+        beamCtx.globalAlpha = p.a * (1 - t);
+        beamCtx.fill();
+
+        // Trail
+        beamCtx.beginPath();
+        beamCtx.arc(p.x, p.y, p.r * 2 * (1 - t), 0, Math.PI * 2);
+        beamCtx.fillStyle = p.color;
+        beamCtx.globalAlpha = p.a * 0.2 * (1 - t);
+        beamCtx.fill();
+      });
+      beamCtx.globalAlpha = 1;
+
+      // Draw beams (persistent lines from energized cores to centre)
+      energies.forEach((energy, i) => {
+        if (energy < 10) return;
+        const coreEl = coreEls[i];
+        if (!coreEl) return;
+        const sx = parseFloat(coreEl.dataset.cx);
+        const sy = parseFloat(coreEl.dataset.cy);
+        const intensity = Math.min(1, (energy - 10) / 70);
+        const width = 1 + intensity * 3;
+
+        beamCtx.beginPath();
+        beamCtx.moveTo(sx, sy);
+        beamCtx.lineTo(cx, cy);
+        beamCtx.strokeStyle = ROLE_COLORS[i];
+        beamCtx.globalAlpha = intensity * 0.25;
+        beamCtx.lineWidth = width;
+        beamCtx.stroke();
+
+        // Glow beam
+        beamCtx.beginPath();
+        beamCtx.moveTo(sx, sy);
+        beamCtx.lineTo(cx, cy);
+        beamCtx.strokeStyle = ROLE_COLORS[i];
+        beamCtx.globalAlpha = intensity * 0.08;
+        beamCtx.lineWidth = width * 4;
+        beamCtx.stroke();
+      });
+      beamCtx.globalAlpha = 1;
+
+      // Update core visuals
+      energies.forEach((energy, i) => {
+        const el = coreEls[i];
+        if (!el) return;
+        el.classList.toggle('energized', energy > 20);
+        el.classList.toggle('high-energy', energy > 65);
+
+        // Tap flash decay
+        if (tapFlash[i] > 0) {
+          tapFlash[i] = Math.max(0, tapFlash[i] - dt * 3);
+        }
+      });
+
+      // Update logo glow based on average energy
+      const avgEnergy = energies.reduce((a, b) => a + b, 0) / 10;
+      const logoIntensity = Math.min(1, avgEnergy / 50);
+      logoGlow.style.width = (240 + logoIntensity * 80) + 'px';
+      logoGlow.style.height = (240 + logoIntensity * 80) + 'px';
+      logoGlow.style.background = `radial-gradient(circle, rgba(0,212,255,${0.05 + logoIntensity * 0.2}) 0%, transparent 70%)`;
+
+      // Logo brightness
+      const bright = 0.3 + logoIntensity * 0.7;
+      const sat = logoIntensity;
+      logoImg.style.filter = `invert(1) contrast(3) brightness(${bright}) saturate(${sat})`;
+      if (avgEnergy > 70) {
+        logoContainer.classList.add('awakened');
+      }
+
+      // Update audio layers
+      updateLayerVolumes();
+
+      requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
+
+    // ============== SOCKET.IO EVENTS ==============
+    socket.on('stateSync', (state) => {
+      volunteers = state.volunteers;
+      currentScene = state.currentScene;
+      sceneIndicator.textContent = `SCENE ${currentScene + 1}`;
+
+      // Update blackout
+      blackout.classList.toggle('active', state.blackout);
+
+      // Update master volume
+      if (audioCtx) setMasterVolume(state.masterVolume);
+
+      // Update connected count
+      const connected = volunteers.filter(v => v.connected).length;
+      connCount.textContent = connected > 0 ? `${connected} / 10 CONNECTED` : '';
+
+      // Update core names and states
+      volunteers.forEach((v, idx) => {
+        if (idx < 10) {
+          const nameEl = document.getElementById(`coreName-${v.roleId}`);
+          const roleEl = document.getElementById(`coreRole-${v.roleId}`);
+          if (nameEl) nameEl.textContent = v.name;
+          if (roleEl) roleEl.textContent = ROLES[v.roleId];
+          const coreEl = coreEls[v.roleId];
+          if (coreEl) {
+            coreEl.classList.toggle('disabled', !v.enabled);
+            coreEl.classList.toggle('disconnected', !v.connected);
+          }
+          energies[v.roleId] = v.energy;
+        }
+      });
+    });
+
+    socket.on('participantJoined', ({ volunteer, role, count }) => {
+      connCount.textContent = `${count} / 10 CONNECTED`;
+      // Particles from edge toward the core position
+      if (coreEls[role.id]) {
+        spawnBeamParticle(role.id);
+      }
+      showCaption(`${volunteer.name.toUpperCase()} JOINED`, 2000);
+    });
+
+    socket.on('participantTapped', ({ id, roleId, energy, name, roleName }) => {
+      energies[roleId] = energy;
+      tapFlash[roleId] = 1;
+
+      // Core ripple
+      const coreEl = coreEls[roleId];
+      if (coreEl) {
+        const ripple = document.createElement('div');
+        ripple.className = 'core-ripple';
+        ripple.style.left = '50%';
+        ripple.style.top = '50%';
+        ripple.style.transform = 'translate(-50%, -50%)';
+        ripple.style.borderColor = ROLE_COLORS[roleId];
+        coreEl.appendChild(ripple);
+        setTimeout(() => ripple.remove(), 600);
+      }
+
+      // Beam particles toward centre
+      spawnBeamParticle(roleId);
+
+      // Synth tap sound
+      playSynthTap(roleId);
+
+      // Occasional caption for high-energy events
+      if (energy > 60 && Math.random() < 0.15) {
+        const captions = [
+          `${name.toUpperCase()} POWERED THE ${roleName.toUpperCase()}`,
+          `${roleName.toUpperCase()} ONLINE`,
+          `${roleName.toUpperCase()} CHARGING`,
+          `${roleName.toUpperCase()} LAYER ACTIVE`
+        ];
+        showCaption(captions[Math.floor(Math.random() * captions.length)], 1800);
+      }
+    });
+
+    socket.on('energyUpdate', (data) => {
+      data.forEach(d => {
+        energies[d.roleId] = d.energy;
+      });
+    });
+
+    socket.on('participantDisconnected', ({ id, roleId }) => {
+      const coreEl = coreEls[roleId];
+      if (coreEl) coreEl.classList.add('disconnected');
+    });
+
+    socket.on('participantReconnected', ({ volunteer }) => {
+      const coreEl = coreEls[volunteer.roleId];
+      if (coreEl) coreEl.classList.remove('disconnected');
+    });
+
+    socket.on('participantDisabled', ({ id, roleId }) => {
+      const coreEl = coreEls[roleId];
+      if (coreEl) coreEl.classList.add('disabled');
+      energies[roleId] = 0;
+    });
+
+    socket.on('participantEnabled', ({ id, roleId }) => {
+      const coreEl = coreEls[roleId];
+      if (coreEl) coreEl.classList.remove('disabled');
+    });
+
+    socket.on('participantMuted', ({ roleId }) => {
+      // Visual dim
+      const coreEl = coreEls[roleId];
+      if (coreEl) coreEl.style.opacity = '0.3';
+    });
+
+    socket.on('participantUnmuted', ({ roleId }) => {
+      const coreEl = coreEls[roleId];
+      if (coreEl) coreEl.style.opacity = '';
+    });
+
+    socket.on('sceneChanged', ({ scene }) => {
+      currentScene = scene;
+      sceneIndicator.textContent = `SCENE ${scene + 1}`;
+      handleSceneChange(scene);
+    });
+
+    socket.on('performanceStarted', () => {
+      if (audioUnlocked && bgmBuffer) {
+        startAudioLayers();
+      }
+    });
+
+    socket.on('showCaption', ({ text }) => {
+      showCaption(text, 3000);
+    });
+
+    socket.on('startCountdown', () => {
+      runCountdown();
+    });
+
+    socket.on('finalDropActivated', () => {
+      executeFinalDrop();
+    });
+
+    socket.on('emergencyStop', () => {
+      // Kill all BGM layers
+      layers.forEach(l => {
+        try { l.source.stop(); } catch(e) {}
+      });
+      layers = [];
+      // Kill all synth layers
+      synthLayers.forEach(sl => {
+        sl.nodes.forEach(n => { try { n.stop(); } catch(e) {} });
+      });
+      synthLayers = [];
+      synthStarted = false;
+      energies.fill(0);
+      showCaption('EMERGENCY STOP', 3000);
+    });
+
+    socket.on('highlightVolunteer', ({ id }) => {
+      const vol = volunteers.find(v => v.id === id);
+      if (vol) {
+        showCaption(vol.name.toUpperCase(), 2000);
+        // Flash core
+        const coreEl = coreEls[vol.roleId];
+        if (coreEl) {
+          coreEl.style.transform = 'scale(1.3)';
+          setTimeout(() => { coreEl.style.transform = ''; }, 1000);
+        }
+      }
+    });
+
+    socket.on('demoModeActivated', ({ active }) => {
+      if (active) {
+        showCaption('DEMO MODE', 2000);
+      }
+    });
+
+    // ============== CAPTION SYSTEM ==============
+    let captionTimeout = null;
+    function showCaption(text, duration = 2500) {
+      if (captionTimeout) clearTimeout(captionTimeout);
+      captionText.textContent = text;
+      captionText.classList.add('show');
+      captionTimeout = setTimeout(() => {
+        captionText.classList.remove('show');
+      }, duration);
+    }
+
+    // ============== COUNTDOWN ==============
+    function runCountdown() {
+      countdownEl.classList.add('active');
+      let count = 3;
+      countdownNum.textContent = count;
+      const interval = setInterval(() => {
+        count--;
+        if (count > 0) {
+          countdownNum.textContent = count;
+          // Re-trigger animation
+          countdownNum.style.animation = 'none';
+          void countdownNum.offsetHeight;
+          countdownNum.style.animation = 'countPulse 0.8s ease';
+        } else {
+          clearInterval(interval);
+          countdownEl.classList.remove('active');
+        }
+      }, 1000);
+    }
+
+    // ============== FINAL DROP ==============
+    function executeFinalDrop() {
+      // Countdown then drop
+      runCountdown();
+      setTimeout(() => {
+        // All energies max
+        energies.fill(100);
+
+        // Shockwave
+        const sw = document.createElement('div');
+        sw.className = 'shockwave';
+        document.body.appendChild(sw);
+        setTimeout(() => sw.remove(), 1500);
+
+        // Logo full awakening
+        logoContainer.classList.add('awakened');
+
+        // Beam particles from all cores
+        for (let i = 0; i < 10; i++) {
+          for (let j = 0; j < 5; j++) spawnBeamParticle(i);
+        }
+
+        showCaption('FULL SYNC', 3000);
+
+        // After a beat, show credits
+        setTimeout(() => {
+          finalCredits.classList.add('show');
+        }, 4000);
+      }, 3500);
+    }
+
+    // ============== SCENE SYSTEM ==============
+    let sceneTimeouts = [];
+    function clearSceneTimeouts() {
+      sceneTimeouts.forEach(t => clearTimeout(t));
+      sceneTimeouts = [];
+    }
+
+    function handleSceneChange(scene) {
+      clearSceneTimeouts();
+      // Reset visual overlays
+      finalCredits.classList.remove('show');
+      openingOverlay.classList.remove('active');
+      openingTitle.style.opacity = '0';
+      openingQuestion.style.opacity = '0';
+
+      switch (scene) {
+        case 0: // Opening — SYNC title
+          openingOverlay.classList.add('active');
+          sceneTimeouts.push(setTimeout(() => {
+            openingTitle.style.transition = 'opacity 1.5s ease';
+            openingTitle.style.opacity = '1';
+          }, 500));
+          sceneTimeouts.push(setTimeout(() => {
+            openingQuestion.style.transition = 'opacity 1.5s ease';
+            openingQuestion.style.opacity = '1';
+          }, 3000));
+          break;
+
+        case 1: // Joining — cores awaken
+          showCaption('JOIN THE PERFORMANCE', 3000);
+          sceneTimeouts.push(setTimeout(() => {
+            showCaption('SCAN THE QR CODE', 3000);
+          }, 4000));
+          break;
+
+        case 2: // Interaction proof
+          showCaption('TAP ONCE', 3000);
+          sceneTimeouts.push(setTimeout(() => {
+            showCaption('STOP TAPPING', 3000);
+          }, 5000));
+          sceneTimeouts.push(setTimeout(() => {
+            showCaption('NOW IMAGINE TEN PEOPLE IN SYNC', 4000);
+          }, 9000));
+          break;
+
+        case 3: // Rhythm — Kick, Snare, Hi-Hats
+          showCaption('RHYTHM', 2000);
+          if (audioUnlocked && bgmBuffer && layers.length === 0) startAudioLayers();
+          // Send player messages
+          socket.emit('conductorPlayerMessageAll', { message: 'YOUR SECTION IS LIVE' });
+          break;
+
+        case 4: // Foundation — Bass, Chords
+          showCaption('FOUNDATION', 2000);
+          socket.emit('conductorPlayerMessageAll', { message: 'TAP TO POWER YOUR LAYER' });
+          break;
+
+        case 5: // Melody
+          showCaption('MELODY', 2000);
+          socket.emit('conductorPlayerMessageAll', { message: 'KEEP THE ENERGY ALIVE' });
+          break;
+
+        case 6: // Effects
+          showCaption('EFFECTS', 2000);
+          socket.emit('conductorPlayerMessageAll', { message: 'KEEP THE ENERGY ALIVE' });
+          break;
+
+        case 7: // Silence before finale
+          showCaption('ONE LAST BEAT', 3000);
+          energies.fill(5);
+          socket.emit('conductorPlayerMessageAll', { message: 'STOP TAPPING' });
+          sceneTimeouts.push(setTimeout(() => {
+            showCaption('EVERYONE TOGETHER', 3000);
+          }, 4000));
+          break;
+
+        case 8: // Final drop
+          socket.emit('conductorPlayerMessageAll', { message: 'FINAL DROP — TAP FAST' });
+          executeFinalDrop();
+          break;
+      }
+    }
+
+    // ============== KEYBOARD CONTROLS ==============
+    document.addEventListener('keydown', (e) => {
+      switch (e.key) {
+        case 'ArrowRight':
+        case ' ':
+          e.preventDefault();
+          currentScene = Math.min(8, currentScene + 1);
+          socket.emit('conductorScene', { scene: currentScene });
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          currentScene = Math.max(0, currentScene - 1);
+          socket.emit('conductorScene', { scene: currentScene });
+          break;
+        case '1': case '2': case '3': case '4': case '5':
+        case '6': case '7': case '8': case '9':
+          socket.emit('conductorScene', { scene: parseInt(e.key) - 1 });
+          break;
+        case 'd':
+        case 'D':
+          socket.emit('conductorDemo', { active: true });
+          break;
+        case 'Escape':
+          socket.emit('conductorEmergencyStop');
+          break;
+        case 'f':
+        case 'F':
+          socket.emit('conductorFinalDrop');
+          break;
+      }
+    });
+
+    // ============== INIT ==============
+    resize();
+    window.addEventListener('resize', () => {
+      resize();
+      initAmbientParticles();
+    });
+    
+    // Auto-trigger opening scene overlay
+    handleSceneChange(0);
+
+    console.log('[SYNC Projector] Ready');
+  </script>
+</body>
+</html>

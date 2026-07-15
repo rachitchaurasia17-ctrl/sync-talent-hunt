@@ -1,0 +1,17 @@
+{
+  "name": "sync-performance",
+  "version": "1.0.0",
+  "description": "SYNC — Ten Humans. One Song. An interactive musical performance app by Rachit Chaurasia for NMIMS Chandigarh Talent Hunt.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "author": "Rachit Chaurasia",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.21.0",
+    "socket.io": "^4.7.5",
+    "qrcode": "^1.5.4"
+  }
+}

@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SYNC — Player</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; touch-action: manipulation; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #0a0a0f;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .player-info {
+    position: absolute;
+    top: 1.5rem;
+    text-align: center;
+    z-index: 10;
+  }
+  .player-name {
+    font-size: 0.85rem;
+    color: #888;
+    letter-spacing: 0.15rem;
+    margin-bottom: 0.3rem;
+  }
+  .player-role {
+    font-size: 0.75rem;
+    color: #00d4ff;
+    letter-spacing: 0.2rem;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .tap-area {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+  }
+  .tap-button {
+    position: relative;
+    width: 70vmin;
+    height: 70vmin;
+    max-width: 340px;
+    max-height: 340px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 35%, rgba(0,212,255,0.15), rgba(123,47,247,0.08) 60%, rgba(0,0,0,0) 80%);
+    border: 2px solid rgba(0,212,255,0.2);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.08s ease, border-color 0.3s, box-shadow 0.3s;
+    z-index: 5;
+  }
+  .tap-button::before {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    border-radius: 50%;
+    border: 1px solid rgba(0,212,255,0.06);
+    transition: border-color 0.3s;
+  }
+  .tap-button.active {
+    transform: scale(0.92);
+  }
+  .tap-button.energized {
+    border-color: rgba(0,212,255,0.5);
+    box-shadow: 0 0 40px rgba(0,212,255,0.2), 0 0 80px rgba(123,47,247,0.1);
+  }
+  .tap-button.high-energy {
+    border-color: rgba(0,212,255,0.7);
+    box-shadow: 0 0 60px rgba(0,212,255,0.3), 0 0 120px rgba(123,47,247,0.15);
+  }
+  .tap-label {
+    font-size: 1.2rem;
+    font-weight: 300;
+    letter-spacing: 0.3rem;
+    color: rgba(255,255,255,0.3);
+    text-transform: uppercase;
+    pointer-events: none;
+    transition: color 0.3s;
+  }
+  /* Energy ring */
+  .energy-ring {
+    position: absolute;
+    width: calc(70vmin + 24px);
+    height: calc(70vmin + 24px);
+    max-width: 364px;
+    max-height: 364px;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 4;
+  }
+  .energy-ring svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+  }
+  .energy-ring circle {
+    fill: none;
+    stroke-width: 3;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.15s ease;
+  }
+  .energy-ring .bg { stroke: rgba(255,255,255,0.04); }
+  .energy-ring .fill { stroke: url(#energyGrad); }
+  /* Ripple effect */
+  .ripple {
+    position: absolute;
+    border-radius: 50%;
+    border: 2px solid rgba(0,212,255,0.4);
+    animation: rippleExpand 0.8s ease-out forwards;
+    pointer-events: none;
+    z-index: 3;
+  }
+  @keyframes rippleExpand {
+    0% { width: 70vmin; height: 70vmin; opacity: 0.6; }
+    100% { width: 110vmin; height: 110vmin; opacity: 0; }
+  }
+  /* Particle leaving */
+  .particle-out {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #00d4ff;
+    box-shadow: 0 0 8px #00d4ff;
+    animation: particleUp 0.8s ease-out forwards;
+    pointer-events: none;
+    z-index: 3;
+  }
+  @keyframes particleUp {
+    0% { transform: translateY(0) scale(1); opacity: 1; }
+    100% { transform: translateY(-50vh) scale(0.3); opacity: 0; }
+  }
+  /* Flash overlay */
+  .flash {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,212,255,0.06);
+    pointer-events: none;
+    animation: flashFade 0.3s ease-out forwards;
+    z-index: 1;
+  }
+  @keyframes flashFade {
+    0% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  /* Status message */
+  .status-msg {
+    position: absolute;
+    bottom: 2.5rem;
+    text-align: center;
+    font-size: 0.75rem;
+    color: #555;
+    letter-spacing: 0.2rem;
+    text-transform: uppercase;
+    z-index: 10;
+    transition: all 0.3s;
+  }
+  /* Disabled state */
+  .disabled-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10,10,15,0.95);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    z-index: 100;
+  }
+  .disabled-overlay.show { display: flex; }
+  .disabled-overlay .icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.3; }
+  .disabled-overlay .msg {
+    font-size: 0.9rem;
+    color: #666;
+    letter-spacing: 0.2rem;
+    text-transform: uppercase;
+  }
+  /* Connection lost */
+  .connection-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    padding: 0.5rem;
+    background: rgba(255,50,50,0.9);
+    text-align: center;
+    font-size: 0.7rem;
+    letter-spacing: 0.1rem;
+    display: none;
+    z-index: 200;
+  }
+  .connection-bar.show { display: block; }
+</style>
+</head>
+<body>
+  <div class="connection-bar" id="connBar">CONNECTION LOST — RECONNECTING...</div>
+
+  <div class="player-info">
+    <div class="player-name" id="pName">—</div>
+    <div class="player-role" id="pRole">—</div>
+  </div>
+
+  <div class="tap-area" id="tapArea">
+    <div class="energy-ring" id="energyRing">
+      <svg viewBox="0 0 200 200">
+        <defs>
+          <linearGradient id="energyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#00d4ff" />
+            <stop offset="100%" style="stop-color:#7b2ff7" />
+          </linearGradient>
+        </defs>
+        <circle class="bg" cx="100" cy="100" r="92" stroke-dasharray="578" stroke-dashoffset="0"/>
+        <circle class="fill" id="eRingFill" cx="100" cy="100" r="92" stroke-dasharray="578" stroke-dashoffset="578"/>
+      </svg>
+    </div>
+    <div class="tap-button" id="tapBtn">
+      <span class="tap-label" id="tapLabel">TAP</span>
+    </div>
+  </div>
+
+  <div class="status-msg" id="statusMsg">WAIT FOR THE CONDUCTOR</div>
+
+  <div class="disabled-overlay" id="disabledOverlay">
+    <div class="icon">🔒</div>
+    <div class="msg" id="disabledMsg">DISABLED BY CONDUCTOR</div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    // ============================================================
+    // SYNC Player — Volunteer Tap Screen
+    // ============================================================
+    const socket = io();
+    const tapBtn = document.getElementById('tapBtn');
+    const tapLabel = document.getElementById('tapLabel');
+    const tapArea = document.getElementById('tapArea');
+    const statusMsg = document.getElementById('statusMsg');
+    const pName = document.getElementById('pName');
+    const pRole = document.getElementById('pRole');
+    const connBar = document.getElementById('connBar');
+    const disabledOverlay = document.getElementById('disabledOverlay');
+    const disabledMsg = document.getElementById('disabledMsg');
+    const eRingFill = document.getElementById('eRingFill');
+
+    const CIRCUMFERENCE = 578; // 2 * PI * 92
+    let myId = null;
+    let myRoleId = null;
+    let myName = '';
+    let myRole = '';
+    let enabled = true;
+    let muted = false;
+    let energy = 0;
+    let performanceStarted = false;
+
+    // Restore session
+    myName = sessionStorage.getItem('sync_name') || '';
+    myRole = sessionStorage.getItem('sync_role') || '';
+    myRoleId = parseInt(sessionStorage.getItem('sync_roleId')) || null;
+    myId = parseInt(sessionStorage.getItem('sync_id'));
+
+    if (myName) {
+      pName.textContent = myName;
+      pRole.textContent = myRole;
+    }
+
+    // If no session, redirect to join
+    if (!myName) {
+      window.location.href = '/join';
+    }
+
+    socket.on('connect', () => {
+      connBar.classList.remove('show');
+      if (myName) {
+        socket.emit('volunteerJoin', { name: myName });
+      }
+    });
+
+    socket.on('disconnect', () => {
+      connBar.classList.add('show');
+    });
+
+    socket.on('joinAccepted', ({ volunteer, role }) => {
+      myId = volunteer.id;
+      myRoleId = volunteer.roleId;
+      myRole = role.name;
+      myName = volunteer.name;
+      pName.textContent = myName;
+      pRole.textContent = myRole;
+      enabled = volunteer.enabled;
+      muted = volunteer.muted;
+      sessionStorage.setItem('sync_id', myId);
+      sessionStorage.setItem('sync_roleId', myRoleId);
+      sessionStorage.setItem('sync_role', myRole);
+      updateState();
+    });
+
+    socket.on('joinRejected', ({ reason }) => {
+      sessionStorage.clear();
+      window.location.href = '/join';
+    });
+
+    socket.on('roleAssigned', ({ role }) => {
+      myRole = role.name;
+      myRoleId = role.id;
+      pRole.textContent = myRole;
+      sessionStorage.setItem('sync_role', myRole);
+      sessionStorage.setItem('sync_roleId', myRoleId);
+    });
+
+    socket.on('stateSync', (state) => {
+      performanceStarted = state.started;
+      const me = state.volunteers.find(v => v.name === myName);
+      if (me) {
+        myId = me.id;
+        enabled = me.enabled;
+        muted = me.muted;
+        energy = me.energy;
+      }
+      updateState();
+    });
+
+    socket.on('energyUpdate', (energies) => {
+      const me = energies.find(e => e.id === myId);
+      if (me) {
+        energy = me.energy;
+        updateEnergyRing();
+        updateTapButtonEnergy();
+      }
+    });
+
+    socket.on('performanceStarted', () => {
+      performanceStarted = true;
+      updateState();
+    });
+
+    socket.on('youAreMuted', () => {
+      muted = true;
+      updateState();
+    });
+
+    socket.on('youAreUnmuted', () => {
+      muted = false;
+      updateState();
+    });
+
+    socket.on('youAreDisabled', () => {
+      enabled = false;
+      energy = 0;
+      updateState();
+    });
+
+    socket.on('youAreEnabled', () => {
+      enabled = true;
+      // Awakening pulse
+      document.body.style.background = '#0d0d18';
+      setTimeout(() => { document.body.style.background = '#0a0a0f'; }, 400);
+      updateState();
+    });
+
+    socket.on('youAreRemoved', () => {
+      sessionStorage.clear();
+      window.location.href = '/join';
+    });
+
+    socket.on('conductorMessage', ({ message }) => {
+      statusMsg.textContent = message;
+      statusMsg.style.color = '#00d4ff';
+      setTimeout(() => { statusMsg.style.color = '#555'; }, 3000);
+    });
+
+    socket.on('emergencyStop', () => {
+      performanceStarted = false;
+      energy = 0;
+      updateState();
+    });
+
+    socket.on('performanceReset', () => {
+      sessionStorage.clear();
+      window.location.href = '/join';
+    });
+
+    socket.on('finalDropActivated', () => {
+      statusMsg.textContent = 'FINAL DROP — TAP FAST';
+      statusMsg.style.color = '#ff2d95';
+      tapBtn.style.borderColor = 'rgba(255,45,149,0.6)';
+    });
+
+    // ============================================================
+    // Tap handling
+    // ============================================================
+    function handleTap(e) {
+      e.preventDefault();
+      if (!enabled || muted) return;
+
+      socket.emit('volunteerTap');
+
+      // Visual: compress
+      tapBtn.classList.add('active');
+      setTimeout(() => tapBtn.classList.remove('active'), 80);
+
+      // Visual: ripple
+      const ripple = document.createElement('div');
+      ripple.className = 'ripple';
+      tapArea.appendChild(ripple);
+      setTimeout(() => ripple.remove(), 800);
+
+      // Visual: flash
+      const flash = document.createElement('div');
+      flash.className = 'flash';
+      document.body.appendChild(flash);
+      setTimeout(() => flash.remove(), 300);
+
+      // Visual: particle going up
+      const particle = document.createElement('div');
+      particle.className = 'particle-out';
+      particle.style.left = (40 + Math.random() * 20) + '%';
+      particle.style.top = '50%';
+      tapArea.appendChild(particle);
+      setTimeout(() => particle.remove(), 800);
+
+      // Haptic feedback
+      if (navigator.vibrate) navigator.vibrate(30);
+    }
+
+    tapBtn.addEventListener('touchstart', handleTap, { passive: false });
+    tapBtn.addEventListener('mousedown', handleTap);
+
+    // Prevent context menu on long press
+    tapBtn.addEventListener('contextmenu', (e) => e.preventDefault());
+    document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    // ============================================================
+    // State management
+    // ============================================================
+    function updateState() {
+      if (!enabled) {
+        disabledOverlay.classList.add('show');
+        disabledMsg.textContent = 'DISABLED BY CONDUCTOR';
+        return;
+      }
+      disabledOverlay.classList.remove('show');
+
+      if (muted) {
+        statusMsg.textContent = 'MUTED BY CONDUCTOR';
+        statusMsg.style.color = '#ff6644';
+        tapLabel.textContent = 'MUTED';
+        tapLabel.style.color = 'rgba(255,100,60,0.4)';
+        tapBtn.style.borderColor = 'rgba(255,100,60,0.15)';
+        return;
+      }
+
+      tapLabel.style.color = 'rgba(255,255,255,0.3)';
+
+      if (!performanceStarted) {
+        statusMsg.textContent = 'WAIT FOR THE CONDUCTOR';
+        statusMsg.style.color = '#555';
+        tapLabel.textContent = 'TAP';
+      } else {
+        statusMsg.textContent = 'TAP TO POWER YOUR LAYER';
+        statusMsg.style.color = '#666';
+        tapLabel.textContent = 'TAP';
+      }
+
+      updateEnergyRing();
+      updateTapButtonEnergy();
+    }
+
+    function updateEnergyRing() {
+      const offset = CIRCUMFERENCE - (energy / 100) * CIRCUMFERENCE;
+      eRingFill.setAttribute('stroke-dashoffset', offset);
+    }
+
+    function updateTapButtonEnergy() {
+      tapBtn.classList.toggle('energized', energy > 30);
+      tapBtn.classList.toggle('high-energy', energy > 70);
+    }
+  </script>
+</body>
+</html>

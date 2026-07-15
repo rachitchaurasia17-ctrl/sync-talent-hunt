@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SYNC — Ten Humans. One Song.</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #0a0a0f;
+    color: #fff;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+  }
+  h1 {
+    font-size: 4rem;
+    font-weight: 800;
+    letter-spacing: 1.2rem;
+    background: linear-gradient(135deg, #00d4ff, #7b2ff7, #ff2d95);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.5rem;
+  }
+  .tagline {
+    font-size: 1.1rem;
+    font-weight: 300;
+    color: #888;
+    letter-spacing: 0.3rem;
+    margin-bottom: 3rem;
+  }
+  .links {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    max-width: 600px;
+    width: 100%;
+  }
+  a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1.5rem;
+    border-radius: 16px;
+    text-decoration: none;
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.03);
+    transition: all 0.3s ease;
+  }
+  a:hover {
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(100,180,255,0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0,100,255,0.15);
+  }
+  a .icon { font-size: 2rem; margin-bottom: 0.8rem; }
+  a .label { font-size: 1.1rem; font-weight: 600; letter-spacing: 0.1rem; }
+  a .desc { font-size: 0.75rem; color: #666; margin-top: 0.4rem; text-align: center; }
+  .credit {
+    margin-top: 3rem;
+    font-size: 0.75rem;
+    color: #444;
+    letter-spacing: 0.15rem;
+  }
+</style>
+</head>
+<body>
+  <h1>SYNC</h1>
+  <p class="tagline">TEN HUMANS. ONE SONG.</p>
+  <div class="links">
+    <a href="/projector" target="_blank">
+      <div class="icon">🎬</div>
+      <div class="label">PROJECTOR</div>
+      <div class="desc">Audience-facing cinematic display</div>
+    </a>
+    <a href="/conductor" target="_blank">
+      <div class="icon">🎛️</div>
+      <div class="label">CONDUCTOR</div>
+      <div class="desc">Private performance controls</div>
+    </a>
+    <a href="/join">
+      <div class="icon">📱</div>
+      <div class="label">JOIN</div>
+      <div class="desc">Volunteer entry point</div>
+    </a>
+    <a href="/player">
+      <div class="icon">🎵</div>
+      <div class="label">PLAYER</div>
+      <div class="desc">Volunteer tap screen</div>
+    </a>
+  </div>
+  <p class="credit">BY RACHIT CHAURASIA — NMIMS CHANDIGARH</p>
+</body>
+</html>
