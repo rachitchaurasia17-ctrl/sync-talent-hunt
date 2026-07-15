@@ -235,15 +235,11 @@ class Component extends DCLogic {
   }
   demoTick() {
     if (!this.store || !this.store.get().demo) return;
-    const s = this.state.scene;
-    if (s < 3 || s === 8 || s === 9) return;
+    const started = this.state.started;
+    if (!started) return;
     const now = performance.now();
     this.store.get().vols.forEach(v => {
-      if (!this.gate(v.role, s)) return;
-      if (s === 3) {
-        if (v.role !== 'KICK') return;
-        if (!this._proofWindow || now < this._proofWindow[0] || now > this._proofWindow[1]) return;
-      }
+      if (!this.gate(v.role)) return;
       const n = this.vis.nodes[v.id];
       const target = 0.72;
       if (n.energy < target && Math.random() < 0.4) this.volTap(v.id);
@@ -261,7 +257,7 @@ class Component extends DCLogic {
     if (!this.store) return;
     const sv = this.store.get().vols[id], n = this.vis.nodes[id];
     if (!sv || !sv.enabled || sv.muted || !n) return;
-    const live = this.gate(sv.role, this.state.scene);
+    const live = this.gate(sv.role);
     n.glow = 1;
     let delay = 0.05;
     if (this.audio && this.audio.ready && live) delay = this.audio.tapSound(sv.role) || 0.05;
@@ -273,7 +269,7 @@ class Component extends DCLogic {
     if (live) {
       n.energy = Math.min(1, n.energy + 0.13);
       n.charge = Math.min(1, n.charge + 0.09);
-      if (n.charge >= 1 && this.state.scene >= 4 && this.state.scene < 8) this.fireBeam(n);
+      if (n.charge >= 1 && this.state.started) this.fireBeam(n);
     }
   }
   fireBeam(n, silent) {
@@ -402,7 +398,7 @@ class Component extends DCLogic {
     vis.level += (level - vis.level) * 0.2;
     vis.beat *= Math.pow(0.92, dt);
     vis.pulse *= Math.pow(0.955, dt);
-    const s = this.state.scene;
+    const started = this.state.started;
     // beat detect from grid phase
     if (A && A.playing) {
       const ph = A.beatPhase();
@@ -415,20 +411,19 @@ class Component extends DCLogic {
       const e = {};
       vis.nodes.forEach(n => {
         const v = st.vols[n.id];
-        const live = this.gate(v.role, s) && v.enabled && !v.muted;
+        const live = this.gate(v.role) && v.enabled && !v.muted;
         if (!this._settle) n.energy *= Math.pow(0.9988, dt * (st.demo ? 0.9 : 1));
         else n.energy *= Math.pow(0.9975, dt);
-        if (s === 9 && !this._settle) n.energy = Math.max(n.energy, 0.9);
-        const eff = live || s === 9 ? n.energy : 0;
+        if (started && !this._settle) n.energy = Math.max(n.energy, 0.9);
+        const eff = live || started ? n.energy : 0;
         e[this.KEYMAP[v.role]] = eff;
-        if (this.gate(v.role, s) || s === 9) { sum += eff; count++; }
+        if (this.gate(v.role) || started) { sum += eff; count++; }
       });
-      if (s === 9) e.finalEnergy = this._settle ? 0.3 : 1;
+      if (started) e.finalEnergy = this._settle ? 0.3 : 1;
       if (A && A.ready && A.playing) A.setEnergies(e);
     }
     const avg = count ? sum / count : 0;
-    const targetGlow = s === 1 ? 0.04 : s === 2 ? 0.05 + 0.11 * (st ? st.vols.filter(v => v.connected).length / 10 : 0)
-      : s === 9 ? 1 : Math.min(0.9, 0.1 + s * 0.055 + avg * 0.45);
+    const targetGlow = started ? 1 : Math.min(0.9, 0.1 + avg * 0.45);
     vis.energyGlow += (targetGlow - vis.energyGlow) * 0.02 * dt;
     const E = vis.energyGlow, lv = vis.level, L = this.logoPos();
     g.clearRect(0, 0, W, H);
@@ -460,7 +455,7 @@ class Component extends DCLogic {
     // cores
     if (st) vis.nodes.forEach(n => {
       const v = st.vols[n.id];
-      const live = this.gate(v.role, s) || s === 9;
+      const live = this.gate(v.role) || started;
       n.glow *= Math.pow(0.93, dt);
       const base = !v.connected ? 0.07 : !v.enabled ? 0.1 : v.muted ? 0.16 : live ? 0.45 + n.energy * 0.5 : 0.3;
       g.shadowBlur = 16 + n.energy * 14; g.shadowColor = v.color;
@@ -469,7 +464,7 @@ class Component extends DCLogic {
       const rad = 5 + n.energy * 5 + n.glow * 3 + (live ? vis.beat * 2.2 : 0);
       g.beginPath(); g.arc(n.x, n.y, rad, 0, 7); g.fill();
       g.shadowBlur = 0;
-      if (v.connected && v.enabled && n.charge > 0.01 && s >= 4 && s < 8) {
+      if (v.connected && v.enabled && n.charge > 0.01 && started) {
         g.globalAlpha = 0.7;
         g.strokeStyle = v.color; g.lineWidth = 2.2; g.lineCap = 'round';
         g.beginPath(); g.arc(n.x, n.y, rad + 8, -Math.PI / 2, -Math.PI / 2 + n.charge * 6.283); g.stroke();
@@ -563,8 +558,8 @@ class Component extends DCLogic {
       if (wc) this.drawWave(wc.getContext('2d'), wc, null, arr);
     }
     // logo
-    const kickE = st ? (this.gate('KICK', s) || s === 9 ? vis.nodes[0].energy : 0) : 0;
-    const bassE = st ? (this.gate('BASS', s) || s === 9 ? vis.nodes[3].energy : 0) : 0;
+    const kickE = st ? (this.gate('KICK') || started ? vis.nodes[0].energy : 0) : 0;
+    const bassE = st ? (this.gate('BASS') || started ? vis.nodes[3].energy : 0) : 0;
     const kickP = Math.pow(Math.max(0, 1 - (A && A.playing ? A.beatPhase() : 0.5)), 3);
     const breathe = Math.sin(vis.t * 1.4) * 0.01 * (0.4 + E);
     const scale = 1 + breathe + kickP * (0.01 + 0.03 * Math.max(kickE, bassE)) + vis.pulse * 0.05;
@@ -586,8 +581,8 @@ class Component extends DCLogic {
       hintBar: this.R('hintBar'),
       countdown: this.state.countdown,
       onCanvasClick: this.onCanvasClick,
-      hintText: (this.props.showHints ?? true) ? '→ SCENES · D DEMO · C CONDUCTOR · M MUTE · CLICK A CORE TO TAP' : '',
-      sceneTagText: this.finalShown ? '' : this.TAGS[this.state.scene] + (this.state.demo ? ' · DEMO' : ''),
+      hintText: (this.props.showHints ?? true) ? '→ D DEMO · C CONDUCTOR · M MUTE · CLICK A CORE TO TAP' : '',
+      sceneTagText: this.state.started ? 'LIVE' + (this.state.demo ? ' · DEMO' : '') : 'WAITING' + (this.state.demo ? ' · DEMO' : ''),
     };
   }
 }
