@@ -111,7 +111,9 @@ app.get('/player', (req, res) => {
 // QR code endpoint
 app.get('/api/qr', async (req, res) => {
   try {
-    const joinUrl = `http://${LAN_IP}:${PORT}/join`;
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const host = req.headers.host;
+    const joinUrl = `${protocol}://${host}/join`;
     const qrDataUrl = await QRCode.toDataURL(joinUrl, {
       width: 300,
       margin: 2,
