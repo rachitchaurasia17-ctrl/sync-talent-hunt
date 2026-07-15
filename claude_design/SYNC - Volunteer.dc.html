@@ -4,7 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="./support.js"></script>
-<script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
 <x-dc>
@@ -130,23 +129,11 @@ class Component extends DCLogic {
     if (!this.store) return;
     const name = (this.R('nameEl').current.value || '').trim();
     if (!name) { this.R('nameEl').current.placeholder = 'PLEASE ENTER A NAME'; return; }
-    
-    // Send join request via our new async store
-    this.store.join(name.toUpperCase());
-    
-    // Register callbacks if not already registered
-    if (!this._joinListenersSet) {
-        this._joinListenersSet = true;
-        this.store.onJoinAccepted = (vol) => {
-            localStorage.setItem('sync-my-vol', String(vol.id));
-            this.setState({ vol });
-            if (navigator.vibrate) navigator.vibrate(40);
-        };
-        this.store.onJoinRejected = (reason) => {
-            this.R('nameEl').current.value = '';
-            this.R('nameEl').current.placeholder = reason || 'JOIN REJECTED';
-        };
-    }
+    const vol = this.store.join(name.toUpperCase());
+    if (!vol) { this.R('nameEl').current.value = ''; this.R('nameEl').current.placeholder = 'ALL 10 SLOTS FULL'; return; }
+    localStorage.setItem('sync-my-vol', String(vol.id));
+    this.setState({ vol });
+    if (navigator.vibrate) navigator.vibrate(40);
   };
   status() {
     const v = this.state.vol, s = this.state.scene;

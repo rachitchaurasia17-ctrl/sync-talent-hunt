@@ -1,728 +1,401 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SYNC — Conductor</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
-  body {
-    font-family: 'Inter', sans-serif;
-    background: #0c0c12;
-    color: #e0e0e0;
-    min-height: 100vh;
-    padding: 1.5rem;
-  }
-
-  /* Header */
-  .header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
-  }
-  .header h1 {
-    font-size: 1.5rem;
-    font-weight: 800;
-    letter-spacing: 0.5rem;
-    background: linear-gradient(135deg, #00d4ff, #7b2ff7);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-  }
-  .header .subtitle {
-    font-size: 0.65rem;
-    color: #555;
-    letter-spacing: 0.15rem;
-  }
-  .header .status {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-  }
-  .status-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #00c853;
-    display: inline-block;
-    animation: pulse 2s infinite;
-  }
-  @keyframes pulse { 50% { opacity: 0.5; } }
-  .status-text { font-size: 0.7rem; color: #888; letter-spacing: 0.1rem; }
-
-  /* Grid layout */
-  .grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.5rem;
-  }
-  .grid-full { grid-column: 1 / -1; }
-
-  /* Sections */
-  .section {
-    background: rgba(255,255,255,0.02);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 12px;
-    padding: 1.2rem;
-  }
-  .section-title {
-    font-size: 0.65rem;
-    font-weight: 700;
-    letter-spacing: 0.2rem;
-    color: #00d4ff;
-    text-transform: uppercase;
-    margin-bottom: 1rem;
-  }
-
-  /* Buttons */
-  .btn {
-    padding: 0.55rem 1rem;
-    border-radius: 8px;
-    border: 1px solid rgba(255,255,255,0.1);
-    background: rgba(255,255,255,0.04);
-    color: #ccc;
-    font-family: 'Inter', sans-serif;
-    font-size: 0.7rem;
-    font-weight: 500;
-    letter-spacing: 0.08rem;
-    cursor: pointer;
-    transition: all 0.2s;
-    white-space: nowrap;
-  }
-  .btn:hover { background: rgba(255,255,255,0.08); border-color: rgba(0,212,255,0.3); }
-  .btn:active { transform: scale(0.97); }
-  .btn.primary {
-    background: linear-gradient(135deg, rgba(0,212,255,0.2), rgba(123,47,247,0.2));
-    border-color: rgba(0,212,255,0.3);
-    color: #00d4ff;
-  }
-  .btn.danger {
-    border-color: rgba(255,60,60,0.3);
-    color: #ff6666;
-  }
-  .btn.danger:hover { background: rgba(255,60,60,0.15); }
-  .btn.success {
-    border-color: rgba(0,200,83,0.3);
-    color: #00c853;
-  }
-  .btn.warning {
-    border-color: rgba(255,170,0,0.3);
-    color: #ffaa00;
-  }
-  .btn.active-state {
-    background: rgba(0,212,255,0.15);
-    border-color: rgba(0,212,255,0.5);
-    color: #00d4ff;
-  }
-  .btn-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-bottom: 0.8rem;
-  }
-
-  /* Scene buttons */
-  .scene-btns {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-    margin-top: 0.5rem;
-  }
-  .scene-btn {
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
-    border: 1px solid rgba(255,255,255,0.08);
-    background: rgba(255,255,255,0.03);
-    color: #888;
-    font-family: 'Inter', sans-serif;
-    font-size: 0.75rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .scene-btn:hover { background: rgba(0,212,255,0.1); border-color: rgba(0,212,255,0.3); }
-  .scene-btn.active { background: rgba(0,212,255,0.2); border-color: #00d4ff; color: #00d4ff; }
-
-  /* Volunteer slots */
-  .vol-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 0.8rem;
-  }
-  .vol-card {
-    background: rgba(255,255,255,0.02);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 10px;
-    padding: 0.8rem;
-    transition: all 0.3s;
-  }
-  .vol-card.connected { border-color: rgba(0,200,83,0.2); }
-  .vol-card.disconnected { border-color: rgba(255,60,60,0.2); opacity: 0.5; }
-  .vol-card.disabled { opacity: 0.3; }
-  .vol-card .vol-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.5rem;
-  }
-  .vol-card .vol-name {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: #fff;
-  }
-  .vol-card .vol-role {
-    font-size: 0.6rem;
-    color: #00d4ff;
-    letter-spacing: 0.1rem;
-    text-transform: uppercase;
-  }
-  .vol-card .vol-conn {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: #00c853;
-  }
-  .vol-card.disconnected .vol-conn { background: #ff4444; }
-  .vol-card .vol-energy {
-    height: 3px;
-    background: rgba(255,255,255,0.06);
-    border-radius: 2px;
-    margin: 0.5rem 0;
-    overflow: hidden;
-  }
-  .vol-card .vol-energy-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #00d4ff, #7b2ff7);
-    border-radius: 2px;
-    transition: width 0.15s;
-  }
-  .vol-card .vol-actions {
-    display: flex;
-    gap: 0.3rem;
-    flex-wrap: wrap;
-    margin-top: 0.5rem;
-  }
-  .vol-card .vol-actions .btn {
-    font-size: 0.55rem;
-    padding: 0.3rem 0.6rem;
-  }
-  .vol-card .vol-meta {
-    font-size: 0.55rem;
-    color: #555;
-    margin-top: 0.3rem;
-  }
-  .vol-card .empty-slot {
-    text-align: center;
-    padding: 1rem;
-    color: #333;
-    font-size: 0.7rem;
-    letter-spacing: 0.1rem;
-  }
-
-  /* Sliders */
-  .slider-row {
-    display: flex;
-    align-items: center;
-    gap: 0.8rem;
-    margin-bottom: 0.6rem;
-  }
-  .slider-row label {
-    font-size: 0.65rem;
-    color: #888;
-    min-width: 100px;
-    letter-spacing: 0.05rem;
-  }
-  .slider-row input[type="range"] {
-    flex: 1;
-    -webkit-appearance: none;
-    height: 4px;
-    background: rgba(255,255,255,0.1);
-    border-radius: 2px;
-    outline: none;
-  }
-  .slider-row input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: #00d4ff;
-    cursor: pointer;
-  }
-  .slider-row .value {
-    font-size: 0.65rem;
-    color: #00d4ff;
-    min-width: 35px;
-    text-align: right;
-  }
-
-  /* QR & Join */
-  .qr-area {
-    text-align: center;
-    padding: 1rem 0;
-  }
-  .qr-area img { max-width: 200px; margin-bottom: 0.8rem; }
-  .qr-area .url {
-    font-size: 0.7rem;
-    color: #00d4ff;
-    word-break: break-all;
-    letter-spacing: 0.05rem;
-  }
-
-  /* Audio status */
-  .audio-status {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.5rem;
-  }
-  .audio-stat {
-    font-size: 0.6rem;
-    color: #666;
-    letter-spacing: 0.05rem;
-  }
-  .audio-stat span { color: #00d4ff; }
-
-  /* Role mute grid */
-  .role-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 0.5rem;
-  }
-  .role-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.4rem 0.6rem;
-    border-radius: 6px;
-    background: rgba(255,255,255,0.02);
-    border: 1px solid rgba(255,255,255,0.04);
-  }
-  .role-row .role-name {
-    font-size: 0.6rem;
-    color: #aaa;
-    letter-spacing: 0.05rem;
-  }
-  .role-row .role-controls {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-  }
-  .role-row .btn { font-size: 0.5rem; padding: 0.2rem 0.5rem; }
-
-  /* Projector preview */
-  .projector-preview {
-    background: #000;
-    border-radius: 8px;
-    aspect-ratio: 16/9;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.7rem;
-    color: #333;
-    letter-spacing: 0.1rem;
-    margin-bottom: 0.8rem;
-    overflow: hidden;
-    position: relative;
-  }
-  .projector-preview iframe {
-    width: 100%;
-    height: 100%;
-    border: none;
-    pointer-events: none;
-  }
-
-  /* Scene label */
-  .current-scene {
-    font-size: 0.75rem;
-    color: #00d4ff;
-    letter-spacing: 0.15rem;
-    margin-bottom: 0.8rem;
-    font-weight: 600;
-  }
-</style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+<script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
-  <!-- Header -->
-  <div class="header">
-    <div>
-      <h1>SYNC</h1>
-      <div class="subtitle">CONDUCTOR CONSOLE</div>
-    </div>
-    <div class="status">
-      <span class="status-dot" id="connDot"></span>
-      <span class="status-text" id="connText">Connected</span>
-    </div>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;600&family=Space+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: #04060f; }
+  a { color: #5ee7ff; text-decoration: none; } a:hover { color: #eaf2ff; }
+  ::-webkit-scrollbar { width: 5px; height: 5px; } ::-webkit-scrollbar-thumb { background: rgba(120,160,255,0.25); border-radius: 3px; }
+  select { outline: none; }
+</style>
+</helmet>
+<div data-screen-label="Conductor Console" style="min-height: 100vh; background: radial-gradient(100% 80% at 50% 0%, #070b1a 0%, #04060f 60%); font-family: 'Space Grotesk', sans-serif; color: #eaf2ff; box-sizing: border-box; padding: 16px 24px; display: flex; flex-direction: column; gap: 20px;">
+  
+  <!-- 1. COMPACT TOP HEADER -->
+  <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+    <div style="font-family: 'Unbounded', sans-serif; font-weight: 600; font-size: 15px; letter-spacing: 0.28em; color: #eaf2ff;">SYNC<span style="color: #5ee7ff;"> · CONDUCTOR</span></div>
+    <div style="font-size: 9px; letter-spacing: 0.26em; color: rgba(234,242,255,0.3); border: 1px solid rgba(234,242,255,0.1); border-radius: 999px; padding: 4px 10px;">PRIVATE — NEVER PROJECTED</div>
+    <div style="flex: 1;"></div>
+    <div style="font-size: 10px; letter-spacing: 0.2em; color: {{ liveColor }};">{{ liveText }}</div>
+    <a href="SYNC — Projector.dc.html" target="_blank" style="font-size: 10px; letter-spacing: 0.16em; border: 1px solid rgba(94,231,255,0.4); border-radius: 6px; padding: 6px 12px;">OPEN PROJECTOR ↗</a>
+    <a href="SYNC — Volunteer.dc.html" target="_blank" style="font-size: 10px; letter-spacing: 0.16em; border: 1px solid rgba(234,242,255,0.18); border-radius: 6px; padding: 6px 12px; color: rgba(234,242,255,0.75);">VOLUNTEER PHONE ↗</a>
   </div>
 
-  <div class="grid">
-    <!-- PERFORMANCE CONTROLS -->
-    <div class="section">
-      <div class="section-title">PERFORMANCE</div>
-      <div class="current-scene" id="sceneLabel">SCENE 1 — OPENING</div>
-      <div class="btn-group">
-        <button class="btn success" id="btnJoinOpen" onclick="toggleJoin()">OPEN JOINING</button>
-        <button class="btn primary" onclick="send('conductorStart')">START</button>
-        <button class="btn" onclick="send('conductorPause')">PAUSE</button>
-        <button class="btn warning" onclick="send('conductorCountdown')">COUNTDOWN</button>
-        <button class="btn primary" onclick="send('conductorFinalDrop')">FINAL DROP</button>
+  <!-- 2. SCENE PROGRESS (Horizontal Strip) -->
+  <div style="background: rgba(10,15,30,0.7); border: 1px solid rgba(120,160,255,0.12); border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; gap: 14px; overflow-x: auto; white-space: nowrap;">
+    <div style="font-size: 9px; letter-spacing: 0.3em; color: rgba(234,242,255,0.4); flex-shrink: 0; padding-right: 8px; border-right: 1px solid rgba(234,242,255,0.1);">SCENES</div>
+    <sc-for list="{{ sceneRows }}" as="sr">
+      <div onClick="{{ sr.go }}" style="cursor: pointer; display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 8px; border: 1px solid {{ sr.border }}; background: {{ sr.bg }}; opacity: {{ sr.opacity }};">
+        <span style="font-family: 'Unbounded', sans-serif; font-size: 10px; font-weight: 600; color: {{ sr.numColor }};">{{ sr.num }}</span>
+        <span style="font-size: 10px; letter-spacing: 0.1em; color: {{ sr.color }};">{{ sr.label }}</span>
       </div>
-      <div class="btn-group">
-        <button class="btn" onclick="changeScene(-1)">◀ PREV SCENE</button>
-        <button class="btn" onclick="changeScene(1)">NEXT SCENE ▶</button>
-      </div>
-      <div class="scene-btns" id="sceneBtns"></div>
-      <div class="btn-group" style="margin-top:0.8rem">
-        <button class="btn success" id="btnDemo" onclick="toggleDemo()">RUN DEMO</button>
-        <button class="btn danger" onclick="send('conductorBlackout', {active:true})">BLACKOUT</button>
-        <button class="btn" onclick="send('conductorBlackout', {active:false})">RESTORE</button>
-        <button class="btn danger" onclick="send('conductorEmergencyStop')">⚡ EMERGENCY STOP</button>
-        <button class="btn warning" onclick="send('conductorReset')">RESET</button>
-        <button class="btn danger" onclick="if(confirm('Full reset?')) send('conductorFullReset')">FULL RESET</button>
-      </div>
-    </div>
-
-    <!-- JOIN QR & URL -->
-    <div class="section">
-      <div class="section-title">JOIN — QR CODE</div>
-      <div class="qr-area">
-        <img id="qrImg" src="" alt="QR">
-        <div class="url" id="joinUrl">Loading...</div>
-      </div>
-    </div>
-
-    <!-- VOLUNTEERS -->
-    <div class="section grid-full">
-      <div class="section-title">VOLUNTEERS (<span id="volCount">0</span>/10)</div>
-      <div class="vol-grid" id="volGrid"></div>
-    </div>
-
-    <!-- AUDIO CONTROLS -->
-    <div class="section">
-      <div class="section-title">AUDIO</div>
-      <div class="slider-row">
-        <label>Master Volume</label>
-        <input type="range" min="0" max="100" value="80" id="masterVol" oninput="setMasterVol(this.value)">
-        <span class="value" id="masterVolVal">80%</span>
-      </div>
-      <div class="slider-row">
-        <label>Energy Sensitivity</label>
-        <input type="range" min="3" max="40" value="15" id="sensitivity" oninput="setSensitivity(this.value)">
-        <span class="value" id="sensitivityVal">15</span>
-      </div>
-      <div class="slider-row">
-        <label>Decay Rate</label>
-        <input type="range" min="0.5" max="10" step="0.5" value="2" id="decay" oninput="setDecay(this.value)">
-        <span class="value" id="decayVal">2</span>
-      </div>
-      <div class="btn-group" style="margin-top:0.8rem">
-        <button class="btn danger" onclick="send('conductorPanicMute')">PANIC MUTE</button>
-        <button class="btn success" onclick="send('conductorUnmuteAll')">UNMUTE ALL</button>
-      </div>
-      <div class="audio-status" id="audioStatus">
-        <div class="audio-stat">BGM: <span id="bgmStatus">—</span></div>
-        <div class="audio-stat">Scene: <span id="audioScene">1</span></div>
-      </div>
-    </div>
-
-    <!-- ROLE VOLUMES -->
-    <div class="section">
-      <div class="section-title">ROLE CONTROLS</div>
-      <div class="role-grid" id="roleGrid"></div>
-    </div>
-
-    <!-- PROJECTOR -->
-    <div class="section grid-full">
-      <div class="section-title">PROJECTOR PREVIEW</div>
-      <div class="projector-preview" id="projPreview">
-        <span>Open projector in a new window for full experience</span>
-      </div>
-      <div class="btn-group">
-        <button class="btn primary" onclick="openProjector()">OPEN PROJECTOR ↗</button>
-        <button class="btn" onclick="testCaption()">TEST CAPTION</button>
-      </div>
-    </div>
+    </sc-for>
   </div>
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script>
-    // ============================================================
-    // SYNC Conductor Console
-    // ============================================================
-    const socket = io();
-
-    const ROLES = [
-      'Kick', 'Snare / Clap', 'Hi-Hats / Percussion', 'Bass', 'Chords / Pad',
-      'Main Melody', 'Supporting Melody', 'Effects / Atmosphere', 'Vocal Effects', 'Final Energy / Drop'
-    ];
-    const SCENE_NAMES = [
-      'Opening', 'Joining', 'Interaction', 'Rhythm', 'Foundation',
-      'Melody', 'Effects', 'Silence', 'Final Drop'
-    ];
-
-    let state = null;
-
-    // ============== Init scene buttons ==============
-    const sceneBtns = document.getElementById('sceneBtns');
-    for (let i = 0; i < 9; i++) {
-      const btn = document.createElement('button');
-      btn.className = 'scene-btn';
-      btn.textContent = i + 1;
-      btn.onclick = () => send('conductorScene', { scene: i });
-      btn.title = SCENE_NAMES[i];
-      sceneBtns.appendChild(btn);
-    }
-
-    // ============== Init role controls ==============
-    const roleGrid = document.getElementById('roleGrid');
-    ROLES.forEach((name, i) => {
-      const row = document.createElement('div');
-      row.className = 'role-row';
-      row.id = `role-${i}`;
-      row.innerHTML = `
-        <span class="role-name">${name}</span>
-        <div class="role-controls">
-          <input type="range" min="0" max="100" value="80" style="width:60px;height:3px;" 
-                 oninput="setRoleVol(${i}, this.value)">
-          <button class="btn" id="roleMute-${i}" onclick="toggleRoleMute(${i})">M</button>
+  <div style="display: grid; grid-template-columns: minmax(300px, 1fr) minmax(350px, 1.5fr); gap: 20px; align-items: start;">
+    
+    <!-- LEFT COLUMN: MAIN CONTROLS -->
+    <div style="display: flex; flex-direction: column; gap: 16px;">
+      
+      <!-- 3. MAIN SHOW CONTROLS -->
+      <div style="background: rgba(10,15,30,0.7); border: 1px solid rgba(120,160,255,0.12); border-radius: 14px; padding: 18px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <button onClick="{{ prev }}" style="all: unset; cursor: pointer; text-align: center; padding: 14px; border-radius: 10px; border: 1px solid rgba(234,242,255,0.15); color: rgba(234,242,255,0.7); font-size: 11px; letter-spacing: 0.14em; grid-column: span 1;">← PREV</button>
+          <button onClick="{{ next }}" style="all: unset; cursor: pointer; text-align: center; padding: 14px; border-radius: 10px; border: 1px solid rgba(94,231,255,0.4); color: #5ee7ff; background: rgba(94,231,255,0.06); font-size: 11px; font-weight: 600; letter-spacing: 0.14em; grid-column: span 1;">NEXT →</button>
+          
+          <button onClick="{{ toggleDemo }}" style="all: unset; cursor: pointer; text-align: center; padding: 12px; border-radius: 10px; font-size: 11px; letter-spacing: 0.14em; border: 1px solid rgba(94,231,255,0.45); color: {{ demoColor }}; background: {{ demoBg }}; grid-column: span 2;">{{ demoLabel }}</button>
+          
+          <button onClick="{{ doDrop }}" style="all: unset; cursor: pointer; grid-column: span 2; text-align: center; padding: 16px; border-radius: 10px; font-family: 'Unbounded', sans-serif; font-size: 13px; font-weight: 600; letter-spacing: 0.24em; border: 1px solid rgba(255,209,102,0.55); color: #ffd166; background: rgba(255,209,102,0.08); margin-top: 10px;">FINAL DROP</button>
+          
+          <button onClick="{{ eStop }}" style="all: unset; cursor: pointer; text-align: center; padding: 12px; border-radius: 10px; font-size: 11px; letter-spacing: 0.14em; border: 1px solid rgba(255,94,138,0.5); color: #ff9cb6; background: rgba(255,94,138,0.07); grid-column: span 2; margin-top: 10px;">EMERGENCY STOP</button>
         </div>
-      `;
-      roleGrid.appendChild(row);
-    });
+      </div>
 
-    // ============== Load QR ==============
-    fetch('/api/qr').then(r => r.json()).then(data => {
-      document.getElementById('qrImg').src = data.qr;
-      document.getElementById('joinUrl').textContent = data.url;
-    });
-
-    // ============== Socket events ==============
-    socket.on('connect', () => {
-      document.getElementById('connDot').style.background = '#00c853';
-      document.getElementById('connText').textContent = 'Connected';
-    });
-
-    socket.on('disconnect', () => {
-      document.getElementById('connDot').style.background = '#ff4444';
-      document.getElementById('connText').textContent = 'Disconnected';
-    });
-
-    socket.on('stateSync', (s) => {
-      state = s;
-      updateUI();
-    });
-
-    socket.on('participantTapped', ({ id, roleId, energy, name }) => {
-      // Flash the card
-      const card = document.getElementById(`vol-${id}`);
-      if (card) {
-        card.style.borderColor = 'rgba(0,212,255,0.4)';
-        setTimeout(() => { card.style.borderColor = ''; }, 200);
-      }
-    });
-
-    socket.on('energyUpdate', (data) => {
-      if (!state) return;
-      data.forEach(d => {
-        const vol = state.volunteers.find(v => v.roleId === d.roleId);
-        if (vol) vol.energy = d.energy;
-      });
-      updateVolunteers();
-    });
-
-    // ============== UI Update ==============
-    function updateUI() {
-      if (!state) return;
-
-      // Scene
-      document.getElementById('sceneLabel').textContent = 
-        `SCENE ${state.currentScene + 1} — ${SCENE_NAMES[state.currentScene] || '?'}`.toUpperCase();
-      document.getElementById('audioScene').textContent = state.currentScene + 1;
-
-      // Scene buttons
-      document.querySelectorAll('.scene-btn').forEach((btn, i) => {
-        btn.classList.toggle('active', i === state.currentScene);
-      });
-
-      // Join button
-      const joinBtn = document.getElementById('btnJoinOpen');
-      joinBtn.textContent = state.joinOpen ? 'LOCK JOINING' : 'OPEN JOINING';
-      joinBtn.className = state.joinOpen ? 'btn warning' : 'btn success';
-
-      // Demo button
-      const demoBtn = document.getElementById('btnDemo');
-      demoBtn.textContent = state.demoMode ? 'STOP DEMO' : 'RUN DEMO';
-      demoBtn.className = state.demoMode ? 'btn danger' : 'btn success';
-
-      // Sliders
-      document.getElementById('masterVol').value = state.masterVolume * 100;
-      document.getElementById('masterVolVal').textContent = Math.round(state.masterVolume * 100) + '%';
-      document.getElementById('sensitivity').value = state.energySensitivity;
-      document.getElementById('sensitivityVal').textContent = state.energySensitivity;
-      document.getElementById('decay').value = state.decayRate;
-      document.getElementById('decayVal').textContent = state.decayRate;
-
-      // Role mutes
-      state.roleMutes.forEach((muted, i) => {
-        const btn = document.getElementById(`roleMute-${i}`);
-        if (btn) {
-          btn.className = muted ? 'btn danger' : 'btn';
-          btn.textContent = muted ? 'M' : 'M';
-        }
-      });
-
-      // Volunteers
-      document.getElementById('volCount').textContent = state.volunteers.length;
-      updateVolunteers();
-    }
-
-    function updateVolunteers() {
-      const grid = document.getElementById('volGrid');
-      grid.innerHTML = '';
-
-      for (let i = 0; i < 10; i++) {
-        const vol = state ? state.volunteers[i] : null;
-        const card = document.createElement('div');
-        card.className = 'vol-card';
-        card.id = `vol-${i}`;
-
-        if (!vol) {
-          card.innerHTML = `<div class="empty-slot">SLOT ${i + 1} — ${ROLES[i]}<br><span style="color:#333;font-size:0.6rem">EMPTY</span></div>`;
-        } else {
-          card.className += vol.connected ? ' connected' : ' disconnected';
-          if (!vol.enabled) card.className += ' disabled';
-
-          const lastTap = vol.lastTap ? new Date(vol.lastTap).toLocaleTimeString() : '—';
-          card.innerHTML = `
-            <div class="vol-header">
-              <div>
-                <div class="vol-name">${vol.name}</div>
-                <div class="vol-role">${ROLES[vol.roleId]}</div>
+      <!-- MORE CONTROLS (EXPANDABLE) -->
+      <div style="background: rgba(10,15,30,0.5); border: 1px solid rgba(120,160,255,0.1); border-radius: 14px;">
+        <button onClick="{{ toggleMoreControls }}" style="all: unset; cursor: pointer; width: 100%; box-sizing: border-box; padding: 14px; font-size: 10px; letter-spacing: 0.2em; color: rgba(234,242,255,0.6); display: flex; justify-content: space-between; align-items: center;">
+          <span>MORE CONTROLS &amp; CONFIG</span>
+          <span style="font-size: 12px;">{{ moreControlsIcon }}</span>
+        </button>
+        
+        <sc-if value="{{ moreControlsOpen }}">
+          <div style="padding: 0 14px 14px 14px; border-top: 1px solid rgba(120,160,255,0.05); margin-top: 4px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px;">
+              <button onClick="{{ toggleMute }}" style="all: unset; cursor: pointer; text-align: center; padding: 10px 6px; border-radius: 8px; font-size: 10px; letter-spacing: 0.14em; border: 1px solid rgba(234,242,255,0.2); color: {{ muteColor }}; background: {{ muteBg }};">{{ muteLabel }}</button>
+              <button onClick="{{ cueProof }}" style="all: unset; cursor: pointer; text-align: center; padding: 10px 6px; border-radius: 8px; font-size: 10px; letter-spacing: 0.14em; border: 1px solid rgba(120,160,255,0.35); color: #9fc0ff; background: rgba(77,124,254,0.08);">PROOF CUE</button>
+              <button onClick="{{ doCountdown }}" style="all: unset; cursor: pointer; text-align: center; padding: 10px 6px; border-radius: 8px; font-size: 10px; letter-spacing: 0.14em; border: 1px solid rgba(155,109,255,0.45); color: #c9b3ff; background: rgba(155,109,255,0.08);">COUNTDOWN</button>
+              <button onClick="{{ voiceSim }}" style="all: unset; cursor: pointer; text-align: center; padding: 10px 6px; border-radius: 8px; font-size: 10px; letter-spacing: 0.14em; border: 1px solid rgba(94,231,255,0.4); color: #5ee7ff; background: rgba(94,231,255,0.06);">SIMULATE VOICE</button>
+              <button onClick="{{ doReset }}" style="all: unset; cursor: pointer; text-align: center; padding: 10px 6px; border-radius: 8px; font-size: 10px; letter-spacing: 0.14em; border: 1px solid rgba(234,242,255,0.15); color: rgba(234,242,255,0.55); grid-column: span 2; margin-top: 8px;">RESET SHOW</button>
+            </div>
+            
+            <button onClick="{{ toggleShowSequence }}" style="all: unset; cursor: pointer; width: 100%; box-sizing: border-box; padding: 12px 0 0 0; font-size: 10px; letter-spacing: 0.1em; color: rgba(234,242,255,0.4); text-align: center; margin-top: 10px;">
+              VIEW SHOW SEQUENCE ▾
+            </button>
+            <sc-if value="{{ showSequenceOpen }}">
+              <div style="margin-top: 8px; font-size: 9px; line-height: 1.6; letter-spacing: 0.08em; color: rgba(234,242,255,0.3); background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px;">
+                RUN OF SHOW — 1 darkness · 2 phones join · 3 proof (one kick volunteer) · 4 rhythm · 5 bass &amp; chords · 6 melodies &amp; fx · 7 voice · 8 silence + countdown · 9 final drop.
               </div>
-              <div class="vol-conn"></div>
+            </sc-if>
+          </div>
+        </sc-if>
+      </div>
+
+      <!-- PREVIEW (EXPANDABLE) -->
+      <div style="background: rgba(10,15,30,0.5); border: 1px solid rgba(120,160,255,0.1); border-radius: 14px;">
+        <button onClick="{{ togglePreview }}" style="all: unset; cursor: pointer; width: 100%; box-sizing: border-box; padding: 14px; font-size: 10px; letter-spacing: 0.2em; color: rgba(234,242,255,0.6); display: flex; justify-content: space-between; align-items: center;">
+          <span>VISUAL PREVIEW</span>
+          <span style="font-size: 12px;">{{ previewIcon }}</span>
+        </button>
+        <sc-if value="{{ previewOpen }}">
+          <div style="padding: 0 14px 14px 14px; border-top: 1px solid rgba(120,160,255,0.05); margin-top: 4px;">
+            <canvas ref="{{ prevCvs }}" width="360" height="240" style="width: 100%; margin-top: 10px; border-radius: 10px; background: #03050c; border: 1px solid rgba(234,242,255,0.05);"></canvas>
+          </div>
+        </sc-if>
+        <sc-if value="{{ !previewOpen }}">
+          <div style="display: none;">
+            <canvas ref="{{ prevCvs }}" width="360" height="240" style="display: none;"></canvas>
+          </div>
+        </sc-if>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN: VOLUNTEERS -->
+    <div style="background: rgba(10,15,30,0.7); border: 1px solid rgba(120,160,255,0.12); border-radius: 14px; padding: 18px; display: flex; flex-direction: column;">
+      
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div style="font-size: 11px; letter-spacing: 0.2em; color: rgba(234,242,255,0.5);">VOLUNTEERS</div>
+        <div style="font-size: 10px; letter-spacing: 0.1em; color: {{ voiceStatusColor }};">VOICE: {{ voiceStatusText }}</div>
+      </div>
+      
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 12px; padding-bottom: 12px; border-bottom: 1px solid rgba(120,160,255,0.1);">
+        <div style="font-size: 12px; font-weight: 500; letter-spacing: 0.1em; color: #eaf2ff;">{{ joinedText }} JOINED</div>
+        <button onClick="{{ toggleShowAllSlots }}" style="all: unset; cursor: pointer; font-size: 9px; letter-spacing: 0.1em; color: rgba(94,231,255,0.7); background: rgba(94,231,255,0.1); padding: 4px 10px; border-radius: 6px;">{{ showAllSlotsLabel }}</button>
+      </div>
+
+      <!-- Add Volunteer / QR drawer -->
+      <div style="margin-top: 12px; background: rgba(234,242,255,0.02); border-radius: 8px; border: 1px solid rgba(234,242,255,0.05);">
+        <button onClick="{{ toggleQr }}" style="all: unset; cursor: pointer; width: 100%; box-sizing: border-box; padding: 12px; font-size: 10px; letter-spacing: 0.15em; color: rgba(234,242,255,0.6); text-align: center;">+ ADD VOLUNTEER (QR)</button>
+        <sc-if value="{{ qrOpen }}">
+          <div style="padding: 10px; border-top: 1px solid rgba(234,242,255,0.05); display: flex; flex-direction: column; align-items: center; gap: 10px;">
+            <sc-if value="{{ qrDataUrl }}">
+              <img src="{{ qrDataUrl }}" style="width: 140px; height: 140px; border-radius: 8px; border: 1px solid rgba(234,242,255,0.1);" />
+            </sc-if>
+            <div style="font-size: 10px; letter-spacing: 0.1em; color: rgba(234,242,255,0.5);">{{ joinUrlText }}</div>
+          </div>
+        </sc-if>
+      </div>
+      
+      <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 16px;">
+        <sc-for list="{{ visibleVolRows }}" as="v">
+          <div style="background: rgba(234,242,255,0.03); border: 1px solid rgba(234,242,255,0.05); border-radius: 10px; overflow: hidden; opacity: {{ v.rowOpacity }};">
+            
+            <!-- Compact row header -->
+            <div onClick="{{ v.toggleExpand }}" style="display: grid; grid-template-columns: 10px 1fr 60px 40px; align-items: center; gap: 10px; padding: 12px; cursor: pointer;">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: {{ v.color }}; box-shadow: 0 0 8px {{ v.color }};"></span>
+              <div style="min-width: 0;">
+                <div style="font-size: 12px; font-weight: 500; letter-spacing: 0.08em; color: rgba(234,242,255,0.9); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ v.name }}</div>
+                <div style="font-size: 9px; letter-spacing: 0.1em; color: rgba(234,242,255,0.4); margin-top: 2px;">{{ v.role }}</div>
+              </div>
+              <div style="font-size: 9px; letter-spacing: 0.1em; color: {{ v.statusColor }}; text-align: right;">{{ v.statusText }}</div>
+              <div style="font-size: 12px; text-align: right; color: rgba(234,242,255,0.3);">{{ v.expandIcon }}</div>
             </div>
-            <div class="vol-energy">
-              <div class="vol-energy-fill" style="width:${vol.energy}%"></div>
+
+            <!-- Energy Bar indicator -->
+            <div style="height: 2px; background: rgba(234,242,255,0.04);">
+              <div style="height: 100%; width: {{ v.energyPct }}; background: linear-gradient(90deg, {{ v.color }}, #eaf2ff); box-shadow: 0 0 8px {{ v.color }}; transition: width 0.25s ease;"></div>
             </div>
-            <div class="vol-meta">
-              Energy: ${Math.round(vol.energy)}% · Last tap: ${lastTap}
-              ${vol.muted ? ' · MUTED' : ''}${!vol.enabled ? ' · DISABLED' : ''}
-            </div>
-            <div class="vol-actions">
-              <button class="btn" onclick="send('conductorSimulateTap', {id:${vol.id}})">TAP</button>
-              <button class="btn" onclick="send('conductorHighlight', {id:${vol.id}})">HIGHLIGHT</button>
-              <button class="btn ${vol.muted ? 'danger' : ''}" onclick="send('conductorVolunteerMute', {id:${vol.id}, muted:${!vol.muted}})">
-                ${vol.muted ? 'UNMUTE' : 'MUTE'}
-              </button>
-              <button class="btn ${!vol.enabled ? 'success' : 'warning'}" onclick="send('conductorVolunteerEnable', {id:${vol.id}, enabled:${!vol.enabled}})">
-                ${vol.enabled ? 'DISABLE' : 'ENABLE'}
-              </button>
-              <button class="btn danger" onclick="if(confirm('Remove ${vol.name}?')) send('conductorVolunteerRemove', {id:${vol.id}})">REMOVE</button>
-              <select style="font-size:0.55rem;background:#1a1a22;color:#aaa;border:1px solid rgba(255,255,255,0.1);border-radius:4px;padding:0.2rem" 
-                      onchange="send('conductorAssignRole', {id:${vol.id}, roleId:parseInt(this.value)})">
-                ${ROLES.map((r, ri) => `<option value="${ri}" ${ri === vol.roleId ? 'selected' : ''}>${r}</option>`).join('')}
-              </select>
-            </div>
-          `;
+
+            <!-- Expanded controls -->
+            <sc-if value="{{ v.expanded }}">
+              <div style="padding: 12px; border-top: 1px solid rgba(234,242,255,0.05); background: rgba(0,0,0,0.15); display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+                
+                <select value="{{ v.role }}" onChange="{{ v.onRole }}" style="background: rgba(234,242,255,0.05); border: 1px solid rgba(234,242,255,0.1); border-radius: 6px; padding: 6px 8px; color: rgba(234,242,255,0.7); font-family: 'Space Grotesk', sans-serif; font-size: 9px; letter-spacing: 0.1em; cursor: pointer; flex: 1; min-width: 120px;">
+                  <sc-for list="{{ roleNames }}" as="rn"><option value="{{ rn }}" style="background: #0a0f1e;">{{ rn }}</option></sc-for>
+                </select>
+
+                <button onClick="{{ v.doTap }}" style="all: unset; cursor: pointer; font-size: 9px; letter-spacing: 0.1em; padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(94,231,255,0.35); color: #5ee7ff; background: rgba(94,231,255,0.05);">TAP</button>
+                <button onClick="{{ v.toggleMute }}" style="all: unset; cursor: pointer; font-size: 9px; letter-spacing: 0.1em; padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(234,242,255,0.15); color: {{ v.muteColor }}; background: rgba(234,242,255,0.02);">{{ v.muteTxt }}</button>
+                <button onClick="{{ v.toggleEnable }}" style="all: unset; cursor: pointer; font-size: 9px; letter-spacing: 0.1em; padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(234,242,255,0.15); color: {{ v.enColor }}; background: rgba(234,242,255,0.02);">{{ v.enTxt }}</button>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+      
+      <sc-if value="{{ moreControlsOpen }}">
+        <div style="margin-top: 24px; text-align: center;">
+           <button onClick="{{ clearVolunteers }}" style="all: unset; cursor: pointer; font-size: 9px; letter-spacing: 0.14em; padding: 8px 14px; border-radius: 8px; border: 1px solid rgba(255,94,138,0.3); color: #ff9cb6; background: rgba(255,94,138,0.05);">CLEAR ALL VOLUNTEERS</button>
+        </div>
+      </sc-if>
+
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { 
+    st: null, 
+    energies: {}, 
+    qrDataUrl: '', 
+    joinUrlText: '',
+    moreControlsOpen: false,
+    showAllSlots: false,
+    qrOpen: false,
+    previewOpen: false,
+    showSequenceOpen: false,
+    expandedVolId: null
+  };
+  refs = {};
+  R(n) { return this.refs[n] || (this.refs[n] = React.createRef()); }
+  SCENE_NAMES = ['DARKNESS', 'CONNECTION', 'PROOF', 'RHYTHM', 'BASS', 'MELODY', 'VOICE', 'SILENCE', 'FINAL DROP'];
+  
+  componentDidMount() {
+    fetch('/api/qr').then(r => r.json()).then(d => {
+        if (d.qr) this.setState({ qrDataUrl: d.qr, joinUrlText: d.url });
+    });
+    import('./sync-state.js').then(S => {
+      this.ROLE_LIST = S.ROLE_LIST;
+      this.store = new S.SyncStore('conductor');
+      this.setState({ st: this.store.get() });
+      this.unsub = this.store.subscribe(st => this.setState({ st: { ...st } }));
+      this.unmsg = this.store.onMessage(m => {
+        if (m.type === 'energy') {
+          const e = {};
+          m.list.forEach(x => e[x.id] = x);
+          this._lastBeat = Date.now();
+          this.setState({ energies: e });
         }
-        grid.appendChild(card);
-      }
-    }
-
-    // ============== Actions ==============
-    function send(event, data = {}) {
-      socket.emit(event, data);
-    }
-
-    function toggleJoin() {
-      if (state) send('conductorSetJoinOpen', { open: !state.joinOpen });
-    }
-
-    function toggleDemo() {
-      if (state) send('conductorDemo', { active: !state.demoMode });
-    }
-
-    function changeScene(dir) {
-      if (!state) return;
-      const next = Math.max(0, Math.min(8, state.currentScene + dir));
-      send('conductorScene', { scene: next });
-    }
-
-    function setMasterVol(v) {
-      document.getElementById('masterVolVal').textContent = v + '%';
-      send('conductorMasterVolume', { volume: v / 100 });
-    }
-
-    function setSensitivity(v) {
-      document.getElementById('sensitivityVal').textContent = v;
-      send('conductorSensitivity', { value: parseInt(v) });
-    }
-
-    function setDecay(v) {
-      document.getElementById('decayVal').textContent = v;
-      send('conductorDecayRate', { value: parseFloat(v) });
-    }
-
-    function setRoleVol(roleId, v) {
-      send('conductorRoleVolume', { roleId, volume: v / 100 });
-    }
-
-    function toggleRoleMute(roleId) {
-      if (!state) return;
-      send('conductorRoleMute', { roleId, muted: !state.roleMutes[roleId] });
-    }
-
-    function openProjector() {
-      window.open('/projector', 'sync_projector', 'fullscreen=yes');
-    }
-
-    function testCaption() {
-      send('conductorCaption', { text: 'THIS IS A TEST CAPTION' });
-    }
-
-    // ============== DEMO MODE ==============
-    // Demo simulation is handled server-side (server.js creates volunteers,
-    // simulates taps with rhythmic patterns, and auto-advances scenes).
-    // The conductor just sends the toggle command via toggleDemo().
-
-    // ============== Keyboard ==============
-    document.addEventListener('keydown', (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
-      switch (e.key) {
-        case 'ArrowRight':
-        case ' ':
-          e.preventDefault();
-          changeScene(1);
-          break;
-        case 'ArrowLeft':
-          e.preventDefault();
-          changeScene(-1);
-          break;
-        case '1': case '2': case '3': case '4': case '5':
-        case '6': case '7': case '8': case '9':
-          send('conductorScene', { scene: parseInt(e.key) - 1 });
-          break;
-        case 'd':
-        case 'D':
-          toggleDemo();
-          break;
-        case 'Escape':
-          send('conductorEmergencyStop');
-          break;
-        case 'f':
-        case 'F':
-          send('conductorFinalDrop');
-          break;
+      });
+    });
+    this._draw = setInterval(() => this.drawPreview(), 120);
+  }
+  
+  componentWillUnmount() {
+    clearInterval(this._draw);
+    if (this.unsub) this.unsub(); if (this.unmsg) this.unmsg();
+  }
+  
+  drawPreview() {
+    const cvs = this.R('prevCvs').current;
+    if (!cvs || !this.state.st || !this.state.previewOpen) return;
+    const g = cvs.getContext('2d'), W = cvs.width, H = cvs.height;
+    g.clearRect(0, 0, W, H);
+    g.fillStyle = '#03050c'; g.fillRect(0, 0, W, H);
+    const cx = W / 2, cy = H / 2 - 6, R = 74;
+    const st = this.state.st, E = this.state.energies;
+    let avg = 0;
+    st.vols.forEach(v => avg += (E[v.id] ? E[v.id].energy : 0));
+    avg /= 10;
+    const glow = st.scene === 9 ? 1 : Math.min(0.9, 0.06 + st.scene * 0.05 + avg * 0.5);
+    const gr = g.createRadialGradient(cx, cy, 0, cx, cy, 46);
+    gr.addColorStop(0, `rgba(94,231,255,${0.45 * glow + 0.05})`);
+    gr.addColorStop(1, 'rgba(94,231,255,0)');
+    g.fillStyle = gr; g.fillRect(cx - 50, cy - 50, 100, 100);
+    g.globalCompositeOperation = 'lighter';
+    st.vols.forEach((v, i) => {
+      const a = -Math.PI / 2 + i * Math.PI * 2 / 10;
+      const x = cx + Math.cos(a) * R, y = cy + Math.sin(a) * R * 0.85;
+      const en = E[v.id] ? E[v.id].energy : 0;
+      g.globalAlpha = v.connected ? 0.35 + en * 0.65 : 0.12;
+      g.shadowBlur = 8; g.shadowColor = v.color;
+      g.fillStyle = v.color;
+      g.beginPath(); g.arc(x, y, 3 + en * 4, 0, 7); g.fill();
+      g.shadowBlur = 0;
+    });
+    g.globalCompositeOperation = 'source-over';
+    g.globalAlpha = 1;
+    g.fillStyle = 'rgba(94,231,255,0.6)';
+    g.font = '600 10px Space Grotesk'; g.textAlign = 'center';
+    g.fillText(`SCENE ${st.scene} · ${this.SCENE_NAMES[st.scene - 1]}${st.demo ? ' · DEMO' : ''}`, cx, H - 12);
+  }
+  
+  swapRole(id, newRole) {
+    const st = this.store.get();
+    const me = st.vols[id];
+    const other = st.vols.find(v => v.role === newRole);
+    if (!other || other.id === id) return;
+    const meta = this.ROLE_LIST;
+    const myMeta = meta.find(r => r.role === me.role), newMeta = meta.find(r => r.role === newRole);
+    this.store.patchVol(id, { role: newRole, color: newMeta.color });
+    this.store.patchVol(other.id, { role: myMeta.role, color: myMeta.color });
+  }
+  
+  renderVals() {
+    const st = this.state.st;
+    if (!st) return { sceneRows: [], visibleVolRows: [], roleNames: [], liveText: 'CONNECTING…', liveColor: 'rgba(234,242,255,0.4)', joinedText: '0', voiceStatusText: '', voiceStatusColor: '', prevCvs: this.R('prevCvs') };
+    
+    const projLive = this._lastBeat && Date.now() - this._lastBeat < 4000;
+    
+    // Horizontal Scene Progress
+    const sceneRows = this.SCENE_NAMES.map((label, i) => {
+      const active = st.scene === i + 1;
+      const past = st.scene > i + 1;
+      return {
+        num: String(i + 1), label,
+        go: () => this.store.patch({ scene: i + 1 }),
+        border: active ? 'rgba(94,231,255,0.6)' : 'rgba(234,242,255,0.07)',
+        bg: active ? 'rgba(94,231,255,0.08)' : 'transparent',
+        numColor: active ? '#5ee7ff' : (past ? 'rgba(94,231,255,0.5)' : 'rgba(234,242,255,0.35)'),
+        color: active ? '#eaf2ff' : (past ? 'rgba(234,242,255,0.7)' : 'rgba(234,242,255,0.55)'),
+        opacity: active || past ? 1 : 0.6
       }
     });
 
-    console.log('[SYNC Conductor] Ready');
-  </script>
+    const E = this.state.energies;
+    
+    const allVols = st.vols.map(v => {
+      const expanded = this.state.expandedVolId === v.id;
+      return {
+        ...v,
+        color: v.color, role: v.role,
+        name: v.connected ? v.name || v.role : 'OPEN SLOT',
+        rowOpacity: v.enabled ? 1 : 0.45,
+        energyPct: Math.round((E[v.id] ? E[v.id].energy : 0) * 100) + '%',
+        muteTxt: v.muted ? 'UNMUTE' : 'MUTE',
+        muteColor: v.muted ? '#ff9cb6' : 'rgba(234,242,255,0.5)',
+        enTxt: v.enabled ? 'ON' : 'OFF',
+        enColor: v.enabled ? '#5ee7ff' : 'rgba(234,242,255,0.3)',
+        statusText: v.connected ? 'CONN' : 'WAIT',
+        statusColor: v.connected ? '#5ee7ff' : 'rgba(234,242,255,0.3)',
+        expanded: expanded,
+        expandIcon: expanded ? '▴' : '▾',
+        toggleExpand: () => this.setState({ expandedVolId: expanded ? null : v.id }),
+        doTap: () => { if(v.connected) this.store.tap(v.id); },
+        toggleMute: () => this.store.patchVol(v.id, { muted: !v.muted }),
+        toggleEnable: () => this.store.patchVol(v.id, { enabled: !v.enabled }),
+        onRole: (e) => this.swapRole(v.id, e.target.value),
+      };
+    });
+
+    const joinedCount = st.vols.filter(v => v.connected).length;
+    let visibleVolRows = allVols;
+    if (!this.state.showAllSlots && joinedCount > 0) {
+      visibleVolRows = allVols.filter(v => v.connected);
+    }
+    
+    return {
+      prevCvs: this.R('prevCvs'),
+      sceneRows, 
+      visibleVolRows,
+      roleNames: this.ROLE_LIST ? this.ROLE_LIST.map(r => r.role) : [],
+      
+      prev: () => this.store.patch({ scene: Math.max(1, st.scene - 1) }),
+      next: () => this.store.patch({ scene: Math.min(9, st.scene + 1) }),
+      toggleDemo: () => this.store.patch({ demo: !st.demo }),
+      demoLabel: st.demo ? 'START / PAUSE SHOW (DEMO ON)' : 'START SHOW (DEMO MODE)',
+      demoColor: st.demo ? '#04060e' : '#5ee7ff',
+      demoBg: st.demo ? '#5ee7ff' : 'rgba(94,231,255,0.06)',
+      
+      toggleMute: () => this.store.patch({ muted: !st.muted }),
+      muteLabel: st.muted ? 'UNMUTE ALL' : 'MUTE ALL',
+      muteColor: st.muted ? '#ff9cb6' : '#eaf2ff',
+      muteBg: st.muted ? 'rgba(255,94,138,0.12)' : 'rgba(234,242,255,0.04)',
+      
+      cueProof: () => { this.store.patch({ scene: 3 }); this.store.send('proof', {}); },
+      doCountdown: () => this.store.patch({ scene: 8 }),
+      doDrop: () => this.store.patch({ scene: 9 }),
+      
+      eStop: () => { 
+        if (window.confirm("EMERGENCY STOP will mute all audio and rewind to Scene 1 immediately. Are you sure?")) {
+          this.store.patch({ muted: true, scene: 1, demo: false }); 
+        }
+      },
+      doReset: () => {
+        if (window.confirm("Are you sure you want to RESET the entire show?")) {
+          this.store.reset();
+        }
+      },
+      
+      voiceSim: () => this.store.send('voiceSim', {}),
+      voiceStatusText: st.voiceStatus === 'live' ? 'IN MIX' : 'WAITING',
+      voiceStatusColor: st.voiceStatus === 'live' ? '#5ee7ff' : 'rgba(234,242,255,0.4)',
+      
+      liveText: projLive ? '● PROJECTOR LIVE' : '○ PROJECTOR NOT DETECTED',
+      liveColor: projLive ? '#5ee7ff' : 'rgba(255,209,102,0.8)',
+      
+      joinedText: joinedCount,
+      
+      clearVolunteers: () => { 
+        if (window.confirm("Disconnect ALL volunteers? They will need to reconnect. This action cannot be undone.")) {
+          if (this.store && this.store.socket) this.store.socket.emit('conductorClearVolunteers'); 
+        }
+      },
+      
+      qrDataUrl: this.state.qrDataUrl,
+      joinUrlText: this.state.joinUrlText,
+      
+      moreControlsOpen: this.state.moreControlsOpen,
+      moreControlsIcon: this.state.moreControlsOpen ? '▴' : '▾',
+      toggleMoreControls: () => this.setState({ moreControlsOpen: !this.state.moreControlsOpen }),
+      
+      showAllSlotsLabel: this.state.showAllSlots ? 'HIDE OPEN SLOTS' : 'VIEW OPEN SLOTS',
+      toggleShowAllSlots: () => this.setState({ showAllSlots: !this.state.showAllSlots }),
+      
+      qrOpen: this.state.qrOpen,
+      toggleQr: () => this.setState({ qrOpen: !this.state.qrOpen }),
+      
+      previewOpen: this.state.previewOpen,
+      previewIcon: this.state.previewOpen ? '▴' : '▾',
+      togglePreview: () => this.setState({ previewOpen: !this.state.previewOpen }),
+      
+      showSequenceOpen: this.state.showSequenceOpen,
+      toggleShowSequence: () => this.setState({ showSequenceOpen: !this.state.showSequenceOpen })
+    };
+  }
+}
+</script>
 </body>
 </html>

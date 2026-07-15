@@ -24,8 +24,8 @@ const PORT = process.env.PORT || 3000;
 // ============================================================
 // Static files
 // ============================================================
-app.use('/public', express.static(path.join(__dirname, 'public')));
-app.use('/assets', express.static(path.join(__dirname, 'assets')));
+app.use(express.static(path.join(__dirname, 'public')));
+app.use('/assets', express.static(path.join(__dirname, 'public/assets')));
 
 // ============================================================
 // Performance State
@@ -101,7 +101,7 @@ app.get('/conductor', (req, res) => {
 });
 
 app.get('/join', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'join.html'));
+  res.sendFile(path.join(__dirname, 'public', 'player.html'));
 });
 
 app.get('/player', (req, res) => {
@@ -156,8 +156,8 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // Check if reconnecting
-    const existing = state.volunteers.find(v => v.name === name && !v.connected);
+    // Check if reconnecting (only for real volunteers)
+    const existing = state.volunteers.find(v => v.name === name && !v.connected && !v.isDemo);
     if (existing) {
       existing.socketId = socket.id;
       existing.connected = true;
@@ -168,20 +168,22 @@ io.on('connection', (socket) => {
       return;
     }
 
-    if (state.volunteers.length >= MAX_VOLUNTEERS) {
+    const realVolunteers = state.volunteers.filter(v => !v.isDemo);
+
+    if (realVolunteers.length >= MAX_VOLUNTEERS) {
       socket.emit('joinRejected', { reason: 'ALL 10 PERFORMANCE POSITIONS ARE FILLED.' });
       return;
     }
 
-    // Check duplicate name for connected users
-    const dupe = state.volunteers.find(v => v.name === name && v.connected);
+    // Check duplicate name for connected real users
+    const dupe = realVolunteers.find(v => v.name === name && v.connected);
     if (dupe) {
       socket.emit('joinRejected', { reason: 'This name is already taken.' });
       return;
     }
 
-    // Auto-assign the next available role
-    const takenRoles = new Set(state.volunteers.map(v => v.roleId));
+    // Auto-assign the next available role (checking only real volunteers)
+    const takenRoles = new Set(realVolunteers.map(v => v.roleId));
     let roleId = -1;
     for (let i = 0; i < ROLES.length; i++) {
       if (!takenRoles.has(i)) { roleId = i; break; }
@@ -191,8 +193,14 @@ io.on('connection', (socket) => {
       return;
     }
 
+    // If there is a demo volunteer holding this role, remove it to make space
+    const demoIndex = state.volunteers.findIndex(v => v.roleId === roleId && v.isDemo);
+    if (demoIndex !== -1) {
+      state.volunteers.splice(demoIndex, 1);
+    }
+
     const volunteer = {
-      id: state.volunteers.length,
+      id: 0, // Will be updated during re-indexing
       socketId: socket.id,
       name: name.trim().substring(0, 20),
       roleId,
@@ -200,14 +208,18 @@ io.on('connection', (socket) => {
       enabled: true,
       muted: false,
       connected: true,
-      lastTap: 0
+      lastTap: 0,
+      isDemo: false
     };
 
     state.volunteers.push(volunteer);
+    // Re-index to keep id aligned with array index
+    state.volunteers.forEach((v, i) => v.id = i);
+
     socket.emit('joinAccepted', { volunteer, role: ROLES[roleId] });
-    io.emit('participantJoined', { volunteer, role: ROLES[roleId], count: state.volunteers.length });
+    io.emit('participantJoined', { volunteer, role: ROLES[roleId], count: realVolunteers.length + 1 });
     io.emit('stateSync', state);
-    console.log(`[SYNC] Joined: ${name} → ${ROLES[roleId].name} (${state.volunteers.length}/${MAX_VOLUNTEERS})`);
+    console.log(`[SYNC] Joined: ${name} → ${ROLES[roleId].name} (${realVolunteers.length + 1}/${MAX_VOLUNTEERS} real)`);
   });
 
   // ---------- Volunteer Tap ----------
@@ -256,32 +268,44 @@ io.on('connection', (socket) => {
 
   socket.on('conductorDemo', ({ active }) => {
     state.demoMode = active;
-    if (active) {
-      // Create simulated volunteers if fewer than 10 exist
-      const demoNames = ['Aarav', 'Priya', 'Rohan', 'Ananya', 'Kabir', 'Isha', 'Dev', 'Meera', 'Arjun', 'Zara'];
-      while (state.volunteers.length < MAX_VOLUNTEERS) {
-        const i = state.volunteers.length;
+    if (!active) {
+      // Clear demo volunteers if disabled
+      state.volunteers = state.volunteers.filter(v => !v.isDemo);
+    }
+    io.emit('demoModeActivated', { active });
+    io.emit('stateSync', state);
+  });
+
+  socket.on('demoVolunteerPatch', ({ roleId, connected, name }) => {
+    if (connected) {
+      const existing = state.volunteers.find(v => v.roleId === roleId);
+      if (!existing) {
         state.volunteers.push({
-          id: i,
-          socketId: 'demo-' + i,
-          name: demoNames[i],
-          roleId: i,
+          id: roleId,
+          socketId: 'demo-' + roleId,
+          name: name,
+          roleId: roleId,
           energy: 0,
           enabled: true,
           muted: false,
           connected: true,
-          lastTap: Date.now()
+          isDemo: true
         });
       }
-      state.started = true;
-      state.emergencyStop = false;
-      // Start server-side demo tapping loop
-      startDemoLoop();
     } else {
-      stopDemoLoop();
+      state.volunteers = state.volunteers.filter(v => v.roleId !== roleId);
     }
-    io.emit('demoModeActivated', { active });
     io.emit('stateSync', state);
+  });
+
+  socket.on('syncMessage', (m) => {
+    // Relay arbitrary sync messages (e.g. energy array, role swaps)
+    io.emit('syncMessage', m);
+  });
+
+  socket.on('voicePCM', (m) => {
+    // Relay voice waveform to all clients (mainly Projector)
+    io.emit('voicePCM', m);
   });
 
   socket.on('conductorBlackout', ({ active }) => {
@@ -304,23 +328,36 @@ io.on('connection', (socket) => {
     io.emit('stateSync', state);
   });
 
-  socket.on('conductorReset', () => {
-    const oldVolunteers = state.volunteers;
-    state = createFreshState();
-    // Keep volunteers connected but reset energy
-    state.volunteers = oldVolunteers.map(v => ({
-      ...v,
-      energy: 0,
-      enabled: true,
-      muted: false
-    }));
+  socket.on('conductorClearVolunteers', () => {
+    state.volunteers.forEach(v => {
+      const targetSocket = io.sockets.sockets.get(v.socketId);
+      if (targetSocket) targetSocket.emit('youAreRemoved');
+    });
+    state.volunteers = [];
     io.emit('stateSync', state);
+    console.log('[SYNC] All volunteers cleared');
   });
 
-  socket.on('conductorFullReset', () => {
+  socket.on('conductorReset', () => {
+    state.volunteers.forEach(v => {
+      const targetSocket = io.sockets.sockets.get(v.socketId);
+      if (targetSocket) targetSocket.emit('youAreRemoved');
+    });
     state = createFreshState();
     io.emit('stateSync', state);
     io.emit('performanceReset', {});
+    console.log('[SYNC] Performance Reset');
+  });
+
+  socket.on('conductorFullReset', () => {
+    state.volunteers.forEach(v => {
+      const targetSocket = io.sockets.sockets.get(v.socketId);
+      if (targetSocket) targetSocket.emit('youAreRemoved');
+    });
+    state = createFreshState();
+    io.emit('stateSync', state);
+    io.emit('performanceReset', {});
+    console.log('[SYNC] Full Reset');
   });
 
   socket.on('conductorMasterVolume', ({ volume }) => {
@@ -339,6 +376,18 @@ io.on('connection', (socket) => {
     const vol = state.volunteers.find(v => v.roleId === roleId);
     if (vol) vol.muted = muted;
     io.emit('participantMuted', { roleId, muted });
+    io.emit('stateSync', state);
+  });
+
+  socket.on('conductorRoleEnable', ({ roleId, enabled }) => {
+    const vol = state.volunteers.find(v => v.roleId === roleId);
+    if (vol) {
+        vol.enabled = enabled;
+        if (!enabled) vol.energy = 0;
+        const targetSocket = io.sockets.sockets.get(vol.socketId);
+        if (targetSocket) targetSocket.emit(enabled ? 'youAreEnabled' : 'youAreDisabled');
+        io.emit(enabled ? 'participantEnabled' : 'participantDisabled', { id: vol.id, roleId: vol.roleId });
+    }
     io.emit('stateSync', state);
   });
 
@@ -463,101 +512,15 @@ io.on('connection', (socket) => {
       vol.connected = false;
       io.emit('participantDisconnected', { id: vol.id, roleId: vol.roleId });
       io.emit('stateSync', state);
-      console.log(`[SYNC] Disconnected: ${vol.name}`);
+      console.log(`[SYNC] Disconnected: ${vol.name} ${vol.isDemo ? '(Demo)' : '(Real)'}`);
     }
   });
 });
 
 // ============================================================
-// Energy Decay Loop — runs every 100ms
+// Energy Decay & Demo Loops
+// Moved to Projector Frontend UI. Server just relays states!
 // ============================================================
-setInterval(() => {
-  if (state.emergencyStop || state.paused) return;
-
-  let changed = false;
-  state.volunteers.forEach(vol => {
-    if (vol.energy > 0) {
-      vol.energy = Math.max(0, vol.energy - (state.decayRate * 0.1));
-      changed = true;
-    }
-  });
-
-  if (changed) {
-    io.emit('energyUpdate', state.volunteers.map(v => ({
-      id: v.id,
-      roleId: v.roleId,
-      energy: v.energy
-    })));
-  }
-}, 100);
-
-// ============================================================
-// Demo Mode Loop — Server-side simulation
-// ============================================================
-let demoLoopInterval = null;
-let demoTick = 0;
-
-function startDemoLoop() {
-  stopDemoLoop();
-  demoTick = 0;
-  demoLoopInterval = setInterval(() => {
-    if (!state.demoMode) { stopDemoLoop(); return; }
-    demoTick++;
-
-    // Simulate tapping per role with different rhythmic patterns
-    state.volunteers.forEach(vol => {
-      if (!vol.enabled || vol.muted) return;
-      // Different tap rates: kick=every 2, snare=every 2, hihat=every 1,
-      // bass=every 3, pad=every 4, melody=every 2, etc.
-      const patterns = [2, 2, 1, 3, 4, 2, 3, 5, 4, 2];
-      const pattern = patterns[vol.roleId] || 2;
-
-      if (demoTick % pattern === 0) {
-        // Add randomness to feel human
-        if (Math.random() > 0.1) {
-          vol.energy = Math.min(100, vol.energy + state.energySensitivity * (0.7 + Math.random() * 0.6));
-          vol.lastTap = Date.now();
-          io.emit('participantTapped', {
-            id: vol.id,
-            roleId: vol.roleId,
-            energy: vol.energy,
-            name: vol.name,
-            roleName: ROLES[vol.roleId].name
-          });
-        }
-      }
-    });
-
-    // Auto-advance scenes
-    if (demoTick === 15) { state.currentScene = 1; io.emit('sceneChanged', { scene: 1 }); }
-    if (demoTick === 35) { state.currentScene = 2; io.emit('sceneChanged', { scene: 2 }); }
-    if (demoTick === 60) { state.currentScene = 3; io.emit('sceneChanged', { scene: 3 }); }
-    if (demoTick === 90) { state.currentScene = 4; io.emit('sceneChanged', { scene: 4 }); }
-    if (demoTick === 120) { state.currentScene = 5; io.emit('sceneChanged', { scene: 5 }); }
-    if (demoTick === 150) { state.currentScene = 6; io.emit('sceneChanged', { scene: 6 }); }
-    if (demoTick === 175) { state.currentScene = 7; io.emit('sceneChanged', { scene: 7 }); }
-    if (demoTick === 195) {
-      state.currentScene = 8;
-      io.emit('finalDropActivated', {});
-      io.emit('sceneChanged', { scene: 8 });
-    }
-    if (demoTick === 230) {
-      state.demoMode = false;
-      io.emit('demoModeActivated', { active: false });
-      stopDemoLoop();
-    }
-
-    io.emit('stateSync', state);
-  }, 250); // Every 250ms ≈ synced to ~120bpm subdivisions
-}
-
-function stopDemoLoop() {
-  if (demoLoopInterval) {
-    clearInterval(demoLoopInterval);
-    demoLoopInterval = null;
-  }
-}
-
 // ============================================================
 // Start Server
 // ============================================================

@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;600&family=Space+Grotesk:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: #04060f; }
+  a { color: #5ee7ff; text-decoration: none; } a:hover { color: #eaf2ff; }
+  ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-thumb { background: rgba(120,160,255,0.25); border-radius: 3px; }
+  select { outline: none; }
+</style>
+</helmet>
+<div data-screen-label="Conductor Console" style="min-height: 100vh; background: radial-gradient(100% 80% at 50% 0%, #070b1a 0%, #04060f 60%); font-family: 'Space Grotesk', sans-serif; color: #eaf2ff; box-sizing: border-box; padding: 22px 26px;">
+  <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+    <div style="font-family: 'Unbounded', sans-serif; font-weight: 600; font-size: 17px; letter-spacing: 0.28em; color: #eaf2ff;">SYNC<span style="color: #5ee7ff;"> · CONDUCTOR</span></div>
+    <div style="font-size: 10px; letter-spacing: 0.26em; color: rgba(234,242,255,0.35); border: 1px solid rgba(234,242,255,0.12); border-radius: 999px; padding: 5px 12px;">PRIVATE — NEVER PROJECTED</div>
+    <div style="flex: 1;"></div>
+    <div style="font-size: 11px; letter-spacing: 0.2em; color: {{ liveColor }};">{{ liveText }}</div>
+    <a href="SYNC — Projector.dc.html" target="_blank" style="font-size: 11px; letter-spacing: 0.16em; border: 1px solid rgba(94,231,255,0.4); border-radius: 8px; padding: 8px 14px;">OPEN PROJECTOR ↗</a>
+    <a href="SYNC — Volunteer.dc.html" target="_blank" style="font-size: 11px; letter-spacing: 0.16em; border: 1px solid rgba(234,242,255,0.18); border-radius: 8px; padding: 8px 14px; color: rgba(234,242,255,0.75);">VOLUNTEER PHONE ↗</a>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 220px 1fr 1.35fr; gap: 18px; margin-top: 22px; align-items: start;">
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+      <div style="background: rgba(10,15,30,0.7); border: 1px solid rgba(120,160,255,0.12); border-radius: 14px; padding: 14px;">
+        <div style="font-size: 10px; letter-spacing: 0.3em; color: rgba(234,242,255,0.4);">SCENES</div>
+        <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 10px;">
+          <sc-for list="{{ sceneRows }}" as="sr" hint-placeholder-count="9">
+            <button onClick="{{ sr.go }}" style="all: unset; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; border: 1px solid {{ sr.border }}; background: {{ sr.bg }};">
+              <span style="font-family: 'Unbounded', sans-serif; font-size: 11px; font-weight: 600; color: {{ sr.numColor }}; width: 14px;">{{ sr.num }}</span>
+              <span style="font-size: 11px; letter-spacing: 0.12em; color: {{ sr.color }};">{{ sr.label }}</span>
+            </button>
+          </sc-for>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px;">
+          <button onClick="{{ prev }}" style="all: unset; cursor: pointer; text-align: center; padding: 8px; border-radius: 8px; border: 1px solid rgba(234,242,255,0.15); color: rgba(234,242,255,0.7); font-size: 12px;">←</button>
+          <button onClick="{{ next }}" style="all: unset; cursor: pointer; text-align: center; padding: 8px; border-radius: 8px; border: 1px solid rgba(94,231,255,0.4); color: #5ee7ff; font-size: 12px;">→</button>
+        </div>
+      </div>
+      <div style="background: rgba(10,15,30,0.7); border: 1px solid rgba(120,160,255,0.12); border-radius: 14px; padding: 14px;">
+        <div style="font-size: 10px; letter-spacing: 0.3em; color: rgba(234,242,255,0.4);">PREVIEW</div>
+        <canvas ref="{{ prevCvs }}" width="360" height="240" style="width: 100%; margin-top: 10px; border-radius: 10px; background: #03050c;"></canvas>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+      <div style="background: rgba(10,15,30,0.7); border: 1px solid rgba(120,160,255,0.12); border-radius: 14px; padding: 14px;">
+        <div style="font-size: 10px; letter-spacing: 0.3em; color: rgba(234,242,255,0.4);">SHOW CONTROL</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px;">
+          <button onClick="{{ toggleDemo }}" style="all: unset; cursor: pointer; text-align: center; padding: 12px 6px; border-radius: 10px; font-size: 11px; letter-spacing: 0.14em; border: 1px solid rgba(94,231,255,0.45); color: {{ demoColor }}; background: {{ demoBg }};">{{ demoLabel }}</button>
+          <button onClick="{{ toggleMute }}" style="all: unset; cursor: pointer; text-align: center; padding: 12px 6px; border-radius: 10px; font-size: 11px; letter-spacing: 0.14em; border: 1px solid rgba(234,242,255,0.2); color: {{ muteColor }}; background: {{ muteBg }};">{{ muteLabel }}</button>
+          <button onClick="{{ cueProof }}" style="all: unset; cursor: pointer; text-align: center; padding: 12px 6px; border-radius: 10px; font-size: 11px; letter-spacing: 0.14em; border: 1px solid rgba(120,160,255,0.35); color: #9fc0ff; background: rgba(77,124,254,0.08);">PROOF CUE</button>
+          <button onClick="{{ doCountdown }}" style="all: unset; cursor: pointer; text-align: center; padding: 12px 6px; border-radius: 10px; font-size: 11px; letter-spacing: 0.14em; border: 1px solid rgba(155,109,255,0.45); color: #c9b3ff; background: rgba(155,109,255,0.08);">COUNTDOWN</button>
+          <button onClick="{{ doDrop }}" style="all: unset; cursor: pointer; grid-column: span 2; text-align: center; padding: 14px 6px; border-radius: 10px; font-family: 'Unbounded', sans-serif; font-size: 12px; letter-spacing: 0.24em; border: 1px solid rgba(255,209,102,0.55); color: #ffd166; background: rgba(255,209,102,0.08);">FINAL DROP</button>
+          <button onClick="{{ eStop }}" style="all: unset; cursor: pointer; text-align: center; padding: 11px 6px; border-radius: 10px; font-size: 11px; letter-spacing: 0.14em; border: 1px solid rgba(255,94,138,0.5); color: #ff9cb6; background: rgba(255,94,138,0.07);">EMERGENCY STOP</button>
+          <button onClick="{{ doReset }}" style="all: unset; cursor: pointer; text-align: center; padding: 11px 6px; border-radius: 10px; font-size: 11px; letter-spacing: 0.14em; border: 1px solid rgba(234,242,255,0.15); color: rgba(234,242,255,0.55);">RESET SHOW</button>
+        </div>
+      </div>
+      <div style="background: rgba(10,15,30,0.7); border: 1px solid rgba(120,160,255,0.12); border-radius: 14px; padding: 14px;">
+        <div style="font-size: 10px; letter-spacing: 0.3em; color: rgba(234,242,255,0.4);">VOICE FX</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px;">
+          <button onClick="{{ voiceSim }}" style="all: unset; cursor: pointer; text-align: center; padding: 11px 6px; border-radius: 10px; font-size: 11px; letter-spacing: 0.14em; border: 1px solid rgba(94,231,255,0.4); color: #5ee7ff; background: rgba(94,231,255,0.06);">SIMULATE VOICE</button>
+          <div style="display: grid; place-items: center; font-size: 10px; letter-spacing: 0.2em; color: {{ voiceStatusColor }}; border: 1px dashed rgba(234,242,255,0.14); border-radius: 10px;">{{ voiceStatusText }}</div>
+        </div>
+        <div style="margin-top: 10px; font-size: 10px; line-height: 1.7; letter-spacing: 0.06em; color: rgba(234,242,255,0.35);">The voice volunteer records on their phone. It lands on the projector as a waveform, dissolves into orbit, and joins the mix.</div>
+      </div>
+      <div style="background: rgba(10,15,30,0.7); border: 1px solid rgba(120,160,255,0.12); border-radius: 14px; padding: 14px; font-size: 10px; line-height: 1.8; letter-spacing: 0.06em; color: rgba(234,242,255,0.35);">
+        RUN OF SHOW — 1 darkness · 2 phones join · 3 proof (one kick volunteer) · 4 rhythm · 5 bass &amp; chords · 6 melodies &amp; fx · 7 voice · 8 silence + countdown · 9 final drop. Projector keys mirror these controls.
+      </div>
+    </div>
+
+    <div style="background: rgba(10,15,30,0.7); border: 1px solid rgba(120,160,255,0.12); border-radius: 14px; padding: 14px;">
+      <div style="display: flex; align-items: baseline; gap: 10px;">
+        <div style="font-size: 10px; letter-spacing: 0.3em; color: rgba(234,242,255,0.4);">VOLUNTEERS</div>
+        <div style="font-size: 10px; letter-spacing: 0.14em; color: rgba(94,231,255,0.5);">{{ joinedText }}</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 5px; margin-top: 10px;">
+        <sc-for list="{{ volRows }}" as="v" hint-placeholder-count="10">
+          <div style="display: grid; grid-template-columns: 10px 1fr 90px auto; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; background: rgba(234,242,255,0.03); opacity: {{ v.rowOpacity }};">
+            <span style="width: 8px; height: 8px; border-radius: 50%; background: {{ v.color }}; box-shadow: 0 0 8px {{ v.color }};"></span>
+            <div style="min-width: 0;">
+              <div style="font-size: 12px; letter-spacing: 0.08em; color: rgba(234,242,255,0.9); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ v.name }}</div>
+              <select value="{{ v.role }}" onChange="{{ v.onRole }}" style="margin-top: 2px; background: transparent; border: none; color: rgba(234,242,255,0.4); font-family: 'Space Grotesk', sans-serif; font-size: 9px; letter-spacing: 0.16em; cursor: pointer;">
+                <sc-for list="{{ roleNames }}" as="rn"><option value="{{ rn }}" style="background: #0a0f1e;">{{ rn }}</option></sc-for>
+              </select>
+            </div>
+            <div style="height: 3px; border-radius: 2px; background: rgba(234,242,255,0.08); overflow: hidden;">
+              <div style="height: 100%; width: {{ v.energyPct }}; background: linear-gradient(90deg, {{ v.color }}, #eaf2ff); box-shadow: 0 0 8px {{ v.color }}; transition: width 0.25s ease;"></div>
+            </div>
+            <div style="display: flex; gap: 5px;">
+              <button onClick="{{ v.doTap }}" style="all: unset; cursor: pointer; font-size: 9px; letter-spacing: 0.1em; padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(94,231,255,0.35); color: #5ee7ff;">TAP</button>
+              <button onClick="{{ v.toggleMute }}" style="all: unset; cursor: pointer; font-size: 9px; letter-spacing: 0.1em; padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(234,242,255,0.15); color: {{ v.muteColor }};">{{ v.muteTxt }}</button>
+              <button onClick="{{ v.toggleEnable }}" style="all: unset; cursor: pointer; font-size: 9px; letter-spacing: 0.1em; padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(234,242,255,0.15); color: {{ v.enColor }};">{{ v.enTxt }}</button>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { st: null, energies: {} };
+  refs = {};
+  R(n) { return this.refs[n] || (this.refs[n] = React.createRef()); }
+  SCENE_NAMES = ['DARKNESS', 'CONNECTION', 'PROOF', 'RHYTHM', 'BASS', 'MELODY', 'VOICE', 'SILENCE', 'FINAL DROP'];
+  componentDidMount() {
+    import('./sync-state.js').then(S => {
+      this.ROLE_LIST = S.ROLE_LIST;
+      this.store = new S.SyncStore('conductor');
+      this.setState({ st: this.store.get() });
+      this.unsub = this.store.subscribe(st => this.setState({ st: { ...st } }));
+      this.unmsg = this.store.onMessage(m => {
+        if (m.type === 'energy') {
+          const e = {};
+          m.list.forEach(x => e[x.id] = x);
+          this._lastBeat = Date.now();
+          this.setState({ energies: e });
+        }
+      });
+    });
+    this._draw = setInterval(() => this.drawPreview(), 120);
+  }
+  componentWillUnmount() {
+    clearInterval(this._draw);
+    if (this.unsub) this.unsub(); if (this.unmsg) this.unmsg();
+  }
+  drawPreview() {
+    const cvs = this.R('prevCvs').current;
+    if (!cvs || !this.state.st) return;
+    const g = cvs.getContext('2d'), W = cvs.width, H = cvs.height;
+    g.clearRect(0, 0, W, H);
+    g.fillStyle = '#03050c'; g.fillRect(0, 0, W, H);
+    const cx = W / 2, cy = H / 2 - 6, R = 74;
+    const st = this.state.st, E = this.state.energies;
+    let avg = 0;
+    st.vols.forEach(v => avg += (E[v.id] ? E[v.id].energy : 0));
+    avg /= 10;
+    const glow = st.scene === 9 ? 1 : Math.min(0.9, 0.06 + st.scene * 0.05 + avg * 0.5);
+    const gr = g.createRadialGradient(cx, cy, 0, cx, cy, 46);
+    gr.addColorStop(0, `rgba(94,231,255,${0.45 * glow + 0.05})`);
+    gr.addColorStop(1, 'rgba(94,231,255,0)');
+    g.fillStyle = gr; g.fillRect(cx - 50, cy - 50, 100, 100);
+    g.globalCompositeOperation = 'lighter';
+    st.vols.forEach((v, i) => {
+      const a = -Math.PI / 2 + i * Math.PI * 2 / 10;
+      const x = cx + Math.cos(a) * R, y = cy + Math.sin(a) * R * 0.85;
+      const en = E[v.id] ? E[v.id].energy : 0;
+      g.globalAlpha = v.connected ? 0.35 + en * 0.65 : 0.12;
+      g.shadowBlur = 8; g.shadowColor = v.color;
+      g.fillStyle = v.color;
+      g.beginPath(); g.arc(x, y, 3 + en * 4, 0, 7); g.fill();
+      g.shadowBlur = 0;
+    });
+    g.globalCompositeOperation = 'source-over';
+    g.globalAlpha = 1;
+    g.fillStyle = 'rgba(94,231,255,0.6)';
+    g.font = '600 10px Space Grotesk'; g.textAlign = 'center';
+    g.fillText(`SCENE ${st.scene} · ${this.SCENE_NAMES[st.scene - 1]}${st.demo ? ' · DEMO' : ''}`, cx, H - 12);
+  }
+  swapRole(id, newRole) {
+    const st = this.store.get();
+    const me = st.vols[id];
+    const other = st.vols.find(v => v.role === newRole);
+    if (!other || other.id === id) return;
+    const meta = this.ROLE_LIST;
+    const myMeta = meta.find(r => r.role === me.role), newMeta = meta.find(r => r.role === newRole);
+    this.store.patchVol(id, { role: newRole, color: newMeta.color });
+    this.store.patchVol(other.id, { role: myMeta.role, color: myMeta.color });
+  }
+  renderVals() {
+    const st = this.state.st;
+    if (!st) return { sceneRows: [], volRows: [], roleNames: [], liveText: 'CONNECTING…', liveColor: 'rgba(234,242,255,0.4)', joinedText: '', voiceStatusText: '', voiceStatusColor: '', prevCvs: this.R('prevCvs') };
+    const projLive = this._lastBeat && Date.now() - this._lastBeat < 4000;
+    const sceneRows = this.SCENE_NAMES.map((label, i) => ({
+      num: String(i + 1), label,
+      go: () => this.store.patch({ scene: i + 1 }),
+      border: st.scene === i + 1 ? 'rgba(94,231,255,0.6)' : 'rgba(234,242,255,0.07)',
+      bg: st.scene === i + 1 ? 'rgba(94,231,255,0.08)' : 'transparent',
+      numColor: st.scene === i + 1 ? '#5ee7ff' : 'rgba(234,242,255,0.35)',
+      color: st.scene === i + 1 ? '#eaf2ff' : 'rgba(234,242,255,0.55)',
+    }));
+    const E = this.state.energies;
+    const volRows = st.vols.map(v => ({
+      color: v.color, role: v.role,
+      name: v.connected ? v.name || v.role : 'OPEN SLOT',
+      rowOpacity: v.enabled ? 1 : 0.45,
+      energyPct: Math.round((E[v.id] ? E[v.id].energy : 0) * 100) + '%',
+      muteTxt: v.muted ? 'UNMUTE' : 'MUTE',
+      muteColor: v.muted ? '#ff9cb6' : 'rgba(234,242,255,0.5)',
+      enTxt: v.enabled ? 'ON' : 'OFF',
+      enColor: v.enabled ? '#5ee7ff' : 'rgba(234,242,255,0.3)',
+      doTap: () => this.store.tap(v.id),
+      toggleMute: () => this.store.patchVol(v.id, { muted: !v.muted }),
+      toggleEnable: () => this.store.patchVol(v.id, { enabled: !v.enabled }),
+      onRole: (e) => this.swapRole(v.id, e.target.value),
+    }));
+    return {
+      prevCvs: this.R('prevCvs'),
+      sceneRows, volRows,
+      roleNames: this.ROLE_LIST ? this.ROLE_LIST.map(r => r.role) : [],
+      prev: () => this.store.patch({ scene: Math.max(1, st.scene - 1) }),
+      next: () => this.store.patch({ scene: Math.min(9, st.scene + 1) }),
+      toggleDemo: () => this.store.patch({ demo: !st.demo }),
+      demoLabel: st.demo ? 'DEMO · ON' : 'DEMO MODE',
+      demoColor: st.demo ? '#04060e' : '#5ee7ff',
+      demoBg: st.demo ? '#5ee7ff' : 'rgba(94,231,255,0.06)',
+      toggleMute: () => this.store.patch({ muted: !st.muted }),
+      muteLabel: st.muted ? 'UNMUTE' : 'MUTE ALL',
+      muteColor: st.muted ? '#ff9cb6' : '#eaf2ff',
+      muteBg: st.muted ? 'rgba(255,94,138,0.12)' : 'rgba(234,242,255,0.04)',
+      cueProof: () => { this.store.patch({ scene: 3 }); this.store.send('proof', {}); },
+      doCountdown: () => this.store.patch({ scene: 8 }),
+      doDrop: () => this.store.patch({ scene: 9 }),
+      eStop: () => this.store.patch({ muted: true, scene: 1 }),
+      doReset: () => this.store.reset(),
+      voiceSim: () => this.store.send('voiceSim', {}),
+      voiceStatusText: st.voiceStatus === 'live' ? 'VOICE IN THE MIX' : 'WAITING FOR VOICE',
+      voiceStatusColor: st.voiceStatus === 'live' ? '#5ee7ff' : 'rgba(234,242,255,0.35)',
+      liveText: projLive ? '● PROJECTOR LIVE' : '○ PROJECTOR NOT DETECTED — OPEN IT',
+      liveColor: projLive ? '#5ee7ff' : 'rgba(255,209,102,0.8)',
+      joinedText: st.vols.filter(v => v.connected).length + ' / 10 JOINED',
+    };
+  }
+}
+</script>
+</body>
+</html>
