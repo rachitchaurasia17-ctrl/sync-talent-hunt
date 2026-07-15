@@ -52,9 +52,7 @@ function createFreshState() {
     joinOpen: true,
     started: false,
     paused: false,
-    currentScene: 0,
     demoMode: false,
-    blackout: false,
     emergencyStop: false,
     masterVolume: 0.8,
     energySensitivity: 15,   // energy added per tap
@@ -262,12 +260,6 @@ io.on('connection', (socket) => {
     io.emit('stateSync', state);
   });
 
-  socket.on('conductorScene', ({ scene }) => {
-    state.currentScene = scene;
-    io.emit('sceneChanged', { scene });
-    io.emit('stateSync', state);
-  });
-
   socket.on('conductorDemo', ({ active }) => {
     state.demoMode = active;
     if (!active) {
@@ -308,18 +300,6 @@ io.on('connection', (socket) => {
   socket.on('voicePCM', (m) => {
     // Relay voice waveform to all clients (mainly Projector)
     io.emit('voicePCM', m);
-  });
-
-  socket.on('conductorBlackout', ({ active }) => {
-    state.blackout = active;
-    io.emit('stateSync', state);
-  });
-
-  socket.on('conductorFinalDrop', () => {
-    state.currentScene = 8; // Scene 9 (0-indexed = 8)
-    io.emit('finalDropActivated', {});
-    io.emit('sceneChanged', { scene: 8 });
-    io.emit('stateSync', state);
   });
 
   socket.on('conductorEmergencyStop', () => {

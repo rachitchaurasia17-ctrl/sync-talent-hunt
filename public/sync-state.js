@@ -15,7 +15,7 @@ const ROLES = [
 
 export function defaultState() {
   return {
-    scene: 1, demo: false, muted: false, playing: false, countdown: '', drop: 0,
+    started: false, demo: false, muted: false, playing: false, countdown: '', drop: 0,
     proofStep: 0, voiceStatus: 'idle', resetCount: 0, finalShown: false,
     vols: ROLES.map(r => ({ ...r, name: '', connected: false, enabled: true, muted: false, energy: 0 })),
   };
@@ -37,7 +37,7 @@ export class SyncStore {
     } else {
         this.socket.on('stateSync', (serverState) => {
             // Map server state to Claude UI state
-            this.state.scene = serverState.currentScene + 1;
+            this.state.started = serverState.started;
             this.state.demo = serverState.demoMode;
             
             this.state.vols = ROLES.map(r => {
@@ -105,7 +105,10 @@ export class SyncStore {
 
   patch(d) {
       if (!this.socket) return;
-      if (d.scene !== undefined) this.socket.emit('conductorScene', { scene: d.scene - 1 });
+      if (d.started !== undefined) {
+          if (d.started) this.socket.emit('conductorStart');
+          else this.socket.emit('conductorEmergencyStop');
+      }
       if (d.demo !== undefined) this.socket.emit('conductorDemo', { active: d.demo });
   }
 

@@ -137,34 +137,7 @@ class Component extends DCLogic {
     if (this.unsub) this.unsub(); if (this.unmsg) this.unmsg();
   }
   
-    const cx = W / 2, cy = H / 2 - 6, R = 74;
-    const st = this.state.st, E = this.state.energies;
-    let avg = 0;
-    st.vols.forEach(v => avg += (E[v.id] ? E[v.id].energy : 0));
-    avg /= 10;
-    const glow = st.scene === 9 ? 1 : Math.min(0.9, 0.06 + st.scene * 0.05 + avg * 0.5);
-    const gr = g.createRadialGradient(cx, cy, 0, cx, cy, 46);
-    gr.addColorStop(0, `rgba(94,231,255,${0.45 * glow + 0.05})`);
-    gr.addColorStop(1, 'rgba(94,231,255,0)');
-    g.fillStyle = gr; g.fillRect(cx - 50, cy - 50, 100, 100);
-    g.globalCompositeOperation = 'lighter';
-    st.vols.forEach((v, i) => {
-      const a = -Math.PI / 2 + i * Math.PI * 2 / 10;
-      const x = cx + Math.cos(a) * R, y = cy + Math.sin(a) * R * 0.85;
-      const en = E[v.id] ? E[v.id].energy : 0;
-      g.globalAlpha = v.connected ? 0.35 + en * 0.65 : 0.12;
-      g.shadowBlur = 8; g.shadowColor = v.color;
-      g.fillStyle = v.color;
-      g.beginPath(); g.arc(x, y, 3 + en * 4, 0, 7); g.fill();
-      g.shadowBlur = 0;
-    });
-    g.globalCompositeOperation = 'source-over';
-    g.globalAlpha = 1;
-    g.fillStyle = 'rgba(94,231,255,0.6)';
-    g.font = '600 10px Space Grotesk'; g.textAlign = 'center';
-    g.fillText(`SCENE ${st.scene} · ${this.SCENE_NAMES[st.scene - 1]}${st.demo ? ' · DEMO' : ''}`, cx, H - 12);
-  }
-  
+
   swapRole(id, newRole) {
     const st = this.store.get();
     const me = st.vols[id];
