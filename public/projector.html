@@ -70,26 +70,13 @@
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;particleDensity&quot;: {&quot;editor&quot;: &quot;range&quot;, &quot;default&quot;: 1, &quot;min&quot;: 0.3, &quot;max&quot;: 2, &quot;step&quot;: 0.1, &quot;tsType&quot;: &quot;number&quot;, &quot;section&quot;: &quot;Atmosphere&quot;}, &quot;showHints&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Stage&quot;}}">
 class Component extends DCLogic {
-  state = { scene: 1, countdown: '', demo: false };
+  state = { started: false, demo: false };
   refs = {};
   R(n) { return this.refs[n] || (this.refs[n] = React.createRef()); }
   KEYMAP = { 'KICK': 'kick', 'SNARE': 'snare', 'HI-HATS': 'hats', 'BASS': 'bass', 'CHORDS': 'chords', 'MAIN MELODY': 'mainMel', 'SUPPORT MELODY': 'supMel', 'EFFECTS': 'effects', 'VOICE FX': 'voice', 'FINAL ENERGY': 'finalEnergy' };
-  TAGS = ['', 'I · DARKNESS', 'II · CONNECTION', 'III · PROOF', 'IV · RHYTHM', 'V · BASS', 'VI · MELODY', 'VII · VOICE', 'VIII · SILENCE', 'IX · FINAL DROP'];
-  DEMO_DUR = { 1: 12, 2: 14, 3: 20, 4: 20, 5: 20, 6: 20, 7: 24, 8: 10, 9: 0 };
-  DEMO_NAMES = ['Aarav', 'Ishita', 'Kabir', 'Mira', 'Rohan', 'Sana', 'Dev', 'Anaya', 'Veer', 'Riya'];
 
-  gate(role, scene) {
-    if (scene === 9) return true;
-    if (scene < 3 || scene === 8) return false;
-    switch (role) {
-      case 'KICK': return scene >= 3;
-      case 'SNARE': case 'HI-HATS': return scene >= 4;
-      case 'BASS': case 'CHORDS': return scene >= 5;
-      case 'MAIN MELODY': case 'SUPPORT MELODY': case 'EFFECTS': return scene >= 6;
-      case 'VOICE FX': return scene >= 7;
-      case 'FINAL ENERGY': return false;
-    }
-    return false;
+  gate(role) {
+    return this.state.started;
   }
 
   componentDidMount() {
@@ -118,16 +105,16 @@ class Component extends DCLogic {
       this.layoutNodes();
       this.unsub = this.store.subscribe(st => this.onStore(st));
       this.unmsg = this.store.onMessage(m => this.onMsg(m));
-      this.setState({ scene: this.store.get().scene, demo: this.store.get().demo });
-      this.enterScene(this.store.get().scene, 0);
+      this.setState({ started: this.store.get().started, demo: this.store.get().demo });
+      if (this.state.started) this.startShow();
     });
     this.onResize();
     this._raf = requestAnimationFrame(() => this.frame());
     this._bcast = setInterval(() => this.broadcastEnergy(), 220);
     this._demoTick = setInterval(() => this.demoTick(), 130);
     this._heart = setInterval(() => {
-      if (this.audio && this.audio.ready && this.state.scene <= 2 && !this.audio.muted)
-        this.audio.heartbeat(this.audio.now() + 0.02, 0.16 + this.state.scene * 0.04);
+      if (this.audio && this.audio.ready && this.state.started && !this.audio.muted)
+        this.audio.heartbeat(this.audio.now() + 0.02, 0.2);
     }, 1600);
   }
   componentWillUnmount() {
@@ -170,7 +157,10 @@ class Component extends DCLogic {
 
   // ---------- store / messages ----------
   onStore(st) {
-    if (st.scene !== this.state.scene) { const p = this.state.scene; this.setState({ scene: st.scene }); this.enterScene(st.scene, p); }
+    if (st.started !== this.state.started) { 
+        this.setState({ started: st.started }); 
+        if (st.started) this.startShow(); else this.stopShow();
+    }
     if (st.demo !== this.state.demo) this.setState({ demo: st.demo });
     if (this.audio && this.audio.ready) this.audio.setMuted(st.muted);
     if (st.resetCount !== this._lastReset) { this._lastReset = st.resetCount; this.localReset(); }
@@ -186,174 +176,56 @@ class Component extends DCLogic {
   }
   broadcastEnergy() {
     if (!this.store || !this.vis.nodes.length) return;
-    this.store.send('energy', { list: this.vis.nodes.map(n => ({ id: n.id, energy: +n.energy.toFixed(3), charge: +n.charge.toFixed(3) })), scene: this.state.scene, countdown: this.state.countdown });
+    this.store.send('energy', { list: this.vis.nodes.map(n => ({ id: n.id, energy: +n.energy.toFixed(3), charge: +n.charge.toFixed(3) })) });
   }
 
-  // ---------- scenes ----------
-  go(n) {
-    n = Math.max(1, Math.min(9, n));
-    if (n === this.state.scene) return;
-    if (this.store) this.store.patch({ scene: n });
-    else { const p = this.state.scene; this.setState({ scene: n }); this.enterScene(n, p); }
-  }
-  enterScene(n, prev) {
+  // ---------- show controls ----------
+  startShow() {
     this.clearTimers();
-    this.setState({ countdown: '' });
-    this.finalShown = false;
     if (this.audio) {
-      if (!this.audio.ready && n >= 1) { try { this.audio.init(); } catch (e) {} }
-      if (n >= 3 && n < 8) this.audio.playTrack();
-      if (n < 3 && this.audio.playing) this.audio.stopTrack();
+      if (!this.audio.ready) { try { this.audio.init(); } catch (e) {} }
+      this.audio.playTrack();
     }
-    if (n < 9) this.vis.crest = 0;
-    if (n < 7) this.vis.orbiters = [];
-    if (n === 1) this.runOpening();
-    if (n === 2 && prev < 2) this.runConnect();
-    if (n === 3) this.runProof();
-    if (n === 8) { this.after(2000, () => this.runCountdown()); }
-    if (n === 9 && prev !== 9) this.runDrop();
     this.applyOverlays();
-    if (this.state.demo || (this.store && this.store.get().demo)) this.scheduleDemoAdvance(n);
   }
+  
+  stopShow() {
+    this.clearTimers();
+    if (this.audio && this.audio.playing) {
+      this.audio.stopTrack();
+    }
+    this.applyOverlays();
+  }
+  
   show(name, vis) { const el = this.R(name).current; if (el) el.style.opacity = vis ? 1 : 0; }
   applyOverlays() {
-    const s = this.state.scene;
     ['ovSync', 'ovQ', 'ovProof', 'ovVoice', 'ovLast', 'ovFinal'].forEach(n => this.show(n, false));
-    this.show('ovLast', s === 8);
-  }
-  runOpening() {
-    this.show('ovSync', false);
-    this.after(600, () => this.show('ovSync', true));
-    this.after(4800, () => this.show('ovSync', false));
-    this.after(6800, () => { if (this.state.scene === 1) this.show('ovQ', true); });
-    this.after(11500, () => this.show('ovQ', false));
-  }
-  runConnect() {
-    const demo = this.store && this.store.get().demo;
-    const L = this.logoPos();
-    this.store.get().vols.forEach((v, i) => {
-      if (demo && !v.connected) this.after(600 + i * 800, () => {
-        this.store.patchVol(v.id, { connected: true, name: this.DEMO_NAMES[i] });
-        this.connectFx(v.id);
-      });
-    });
-  }
-  connectFx(id) {
-    const n = this.vis.nodes[id], L = this.logoPos();
-    if (!n) return;
-    n.glow = 1;
-    this.spark(n.x, n.y, L.x, L.y, this.coreColor(id), 1.2);
-    this.vis.energyGlow = Math.min(0.16, this.vis.energyGlow + 0.012);
-    if (this.audio && this.audio.ready) this.audio.pluck(this.audio.now() + 0.02, 440 * Math.pow(1.122, id), 0.14);
-  }
-  runProof() {
-    const seq = [
-      [200, 'ONE VOLUNTEER.'],
-      [2800, 'TAP ONCE.'],
-      [7000, 'THAT IS THE KICK.'],
-      [11000, 'NOW STOP.'],
-      [15000, 'THE PHONES ARE THE INSTRUMENT.'],
-    ];
-    const pt = this.R('proofText').current;
-    seq.forEach(([ms, txt]) => this.after(ms, () => {
-      if (this.state.scene !== 3) return;
-      if (pt) pt.textContent = txt;
-      this.show('ovProof', true);
-    }));
-    this.after(19500, () => this.show('ovProof', false));
-    this._proofWindow = [performance.now() + 2800, performance.now() + 11000];
-  }
-  runCountdown() {
-    ['3', '2', '1'].forEach((c, i) => this.after(i * 1000, () => {
-      this.setState({ countdown: c });
-      if (this.audio && this.audio.ready) this.audio.tick(this.audio.now() + 0.02);
-      const L = this.logoPos();
-      this.ring(L.x, L.y, 40, 6, 'rgba(234,242,255,0.5)');
-    }));
-    this.after(3000, () => {
-      this.setState({ countdown: 'NOW' });
-      if (this.audio && this.audio.ready) this.audio.tick(this.audio.now() + 0.02, true);
-      if (this.store && this.store.get().demo) this.after(900, () => this.go(9));
-    });
-  }
-  runDrop() {
-    const L = this.logoPos();
-    this.setState({ countdown: '' });
-    if (this.audio) {
-      if (!this.audio.ready) this.audio.init();
-      this.audio.playTrack();
-      this.audio.riser(this.audio.now(), 1.1, 0.6);
-    }
-    this.vis.nodes.forEach((n, i) => this.after(120 + i * 55, () => {
-      n.charge = 1; n.energy = 1;
-      this.fireBeam(n, true);
-    }));
-    // freeze — half second of silence, everything holds
-    this.after(1150, () => {
-      this.vis.freezeUntil = performance.now() + 520;
-      if (this.audio && this.audio.ready) this.audio.master.gain.setTargetAtTime(0.0001, this.audio.now(), 0.03);
-    });
-    this.after(1680, () => {
-      if (this.audio && this.audio.ready) {
-        this.audio.master.gain.setTargetAtTime(this.audio.muted ? 0 : 0.95, this.audio.now(), 0.05);
-        this.audio.impact(this.audio.now() + 0.02, 1);
-      }
-      this.vis.pulse = 1.6;
-      this.vis.nodes.forEach(n => n.energy = 1);
-      this.ring(L.x, L.y, 30, 22, 'rgba(94,231,255,0.8)', 7);
-      this.ring(L.x, L.y, 30, 15, 'rgba(155,109,255,0.6)', 4);
-      this.ring(L.x, L.y, 30, 9, 'rgba(255,94,138,0.5)', 3);
-      // elegant particle bloom — radial push, no confetti
-      this.vis.particles.forEach(p => {
-        const dx = p.x - L.x, dy = p.y - L.y, d = Math.hypot(dx, dy) || 1;
-        p.vx += (dx / d) * 3.2; p.vy += (dy / d) * 3.2;
-      });
-      const t0 = performance.now();
-      const fade = () => { const p = Math.min(1, (performance.now() - t0) / 2600); this.vis.crest = p; if (p < 1) requestAnimationFrame(fade); };
-      fade();
-      this.vis.orbiters.forEach(o => o.speed *= 1.8);
-    });
-    this.after(15000, () => { this._settle = true; });
-    this.after(20000, () => {
-      this.finalShown = true;
-      const el = this.R('ovFinal').current;
-      if (el) { el.style.opacity = 1; el.style.transform = 'translate(-50%, 0)'; }
-      this.after(3500, () => { const l2 = this.R('finalLine2').current; if (l2) l2.style.opacity = 1; });
-    });
   }
   localReset() {
     this.clearTimers();
-    this._settle = false; this.finalShown = false;
     if (this.audio) this.audio.stopTrack(0.4);
     Object.assign(this.vis, { pulse: 0, crest: 0, sparks: [], beams: [], rings: [], orbiters: [], energyGlow: 0.04, freezeUntil: 0 });
     this.vis.nodes.forEach(n => { n.charge = 0; n.glow = 0; n.energy = 0; });
-    this.setState({ scene: 1, countdown: '', demo: false });
-    this.enterScene(1, 0);
+    this.setState({ started: false, demo: false });
   }
 
   // ---------- interaction ----------
   handleKey(e) {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     const k = e.key;
-    if (k === 'ArrowRight' || k === ' ') { e.preventDefault(); this.go(this.state.scene + 1); }
-    else if (k === 'ArrowLeft') this.go(this.state.scene - 1);
-    else if (k >= '1' && k <= '9') this.go(+k);
+    if (k === ' ') { 
+       e.preventDefault(); 
+       if (this.store) this.store.patch({ started: !this.store.get().started }); 
+    }
     else if (k === 'd' || k === 'D') this.toggleDemo();
     else if (k === 'm' || k === 'M') { if (this.store) this.store.patch({ muted: !this.store.get().muted }); }
     else if (k === 'r' || k === 'R') { if (this.store) this.store.reset(); }
-    else if (k === 'v' || k === 'V') this.recordVoice();
-    else if (k === 'f' || k === 'F') this.fallbackVoice();
     else if (k === 'c' || k === 'C') window.open('SYNC — Conductor.dc.html', '_blank');
   }
   toggleDemo() {
     if (!this.store) return;
     const demo = !this.store.get().demo;
     this.store.patch({ demo });
-    if (demo) {
-      if (this.audio && !this.audio.ready) this.audio.init();
-      if (this.state.scene === 1) { this.enterScene(1, 0); this.scheduleDemoAdvance(1); }
-      else this.scheduleDemoAdvance(this.state.scene);
-    } else if (this._adv) clearTimeout(this._adv);
   }
   scheduleDemoAdvance(n) {
     if (this._adv) clearTimeout(this._adv);

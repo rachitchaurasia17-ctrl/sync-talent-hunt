@@ -29,94 +29,25 @@
     <div style="flex: 1;"></div>
     <div style="font-size: 10px; letter-spacing: 0.2em; color: {{ liveColor }};">{{ liveText }}</div>
     <a href="/projector" target="_blank" style="font-size: 10px; letter-spacing: 0.16em; border: 1px solid rgba(94,231,255,0.4); border-radius: 6px; padding: 6px 12px;">OPEN PROJECTOR ↗</a>
-    <a href="/" target="_blank" style="font-size: 10px; letter-spacing: 0.16em; border: 1px solid rgba(234,242,255,0.18); border-radius: 6px; padding: 6px 12px; color: rgba(234,242,255,0.75);">VOLUNTEER PHONE ↗</a>
   </div>
 
-  <!-- 2. SCENE PROGRESS (Horizontal Strip) -->
-  <div style="background: rgba(10,15,30,0.7); border: 1px solid rgba(120,160,255,0.12); border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; gap: 14px; overflow-x: auto; white-space: nowrap;">
-    <div style="font-size: 9px; letter-spacing: 0.3em; color: rgba(234,242,255,0.4); flex-shrink: 0; padding-right: 8px; border-right: 1px solid rgba(234,242,255,0.1);">SCENES</div>
-    <sc-for list="{{ sceneRows }}" as="sr">
-      <div onClick="{{ sr.go }}" style="cursor: pointer; display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 8px; border: 1px solid {{ sr.border }}; background: {{ sr.bg }}; opacity: {{ sr.opacity }};">
-        <span style="font-family: 'Unbounded', sans-serif; font-size: 10px; font-weight: 600; color: {{ sr.numColor }};">{{ sr.num }}</span>
-        <span style="font-size: 10px; letter-spacing: 0.1em; color: {{ sr.color }};">{{ sr.label }}</span>
-      </div>
-    </sc-for>
+  <!-- 2. BIG START/STOP BUTTON -->
+  <div style="margin-top: 40px; text-align: center;">
+    <sc-if value="{{ !started }}">
+      <button onClick="{{ togglePlay }}" style="all: unset; cursor: pointer; padding: 24px 60px; font-family: 'Unbounded', sans-serif; font-size: 24px; font-weight: 600; letter-spacing: 0.2em; background: rgba(94,231,255,0.1); border: 2px solid #5ee7ff; border-radius: 20px; color: #5ee7ff; box-shadow: 0 0 20px rgba(94,231,255,0.3);">START SHOW</button>
+    </sc-if>
+    <sc-if value="{{ started }}">
+      <button onClick="{{ togglePlay }}" style="all: unset; cursor: pointer; padding: 24px 60px; font-family: 'Unbounded', sans-serif; font-size: 24px; font-weight: 600; letter-spacing: 0.2em; background: rgba(255,94,138,0.1); border: 2px solid #ff9cb6; border-radius: 20px; color: #ff9cb6; box-shadow: 0 0 20px rgba(255,94,138,0.3);">STOP SHOW</button>
+    </sc-if>
   </div>
 
-  <div style="display: grid; grid-template-columns: minmax(300px, 1fr) minmax(350px, 1.5fr); gap: 20px; align-items: start;">
+  <div style="display: grid; grid-template-columns: minmax(350px, 1fr); max-width: 800px; margin: 0 auto; width: 100%; gap: 20px; align-items: start; margin-top: 40px;">
     
-    <!-- LEFT COLUMN: MAIN CONTROLS -->
-    <div style="display: flex; flex-direction: column; gap: 16px;">
-      
-      <!-- 3. MAIN SHOW CONTROLS -->
-      <div style="background: rgba(10,15,30,0.7); border: 1px solid rgba(120,160,255,0.12); border-radius: 14px; padding: 18px;">
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-          <button onClick="{{ prev }}" style="all: unset; cursor: pointer; text-align: center; padding: 14px; border-radius: 10px; border: 1px solid rgba(234,242,255,0.15); color: rgba(234,242,255,0.7); font-size: 11px; letter-spacing: 0.14em; grid-column: span 1;">← PREV</button>
-          <button onClick="{{ next }}" style="all: unset; cursor: pointer; text-align: center; padding: 14px; border-radius: 10px; border: 1px solid rgba(94,231,255,0.4); color: #5ee7ff; background: rgba(94,231,255,0.06); font-size: 11px; font-weight: 600; letter-spacing: 0.14em; grid-column: span 1;">NEXT →</button>
-          
-          <button onClick="{{ toggleDemo }}" style="all: unset; cursor: pointer; text-align: center; padding: 12px; border-radius: 10px; font-size: 11px; letter-spacing: 0.14em; border: 1px solid rgba(94,231,255,0.45); color: {{ demoColor }}; background: {{ demoBg }}; grid-column: span 2;">{{ demoLabel }}</button>
-          
-          <button onClick="{{ doDrop }}" style="all: unset; cursor: pointer; grid-column: span 2; text-align: center; padding: 16px; border-radius: 10px; font-family: 'Unbounded', sans-serif; font-size: 13px; font-weight: 600; letter-spacing: 0.24em; border: 1px solid rgba(255,209,102,0.55); color: #ffd166; background: rgba(255,209,102,0.08); margin-top: 10px;">FINAL DROP</button>
-          
-          <button onClick="{{ eStop }}" style="all: unset; cursor: pointer; text-align: center; padding: 12px; border-radius: 10px; font-size: 11px; letter-spacing: 0.14em; border: 1px solid rgba(255,94,138,0.5); color: #ff9cb6; background: rgba(255,94,138,0.07); grid-column: span 2; margin-top: 10px;">EMERGENCY STOP</button>
-        </div>
-      </div>
-
-      <!-- MORE CONTROLS (EXPANDABLE) -->
-      <div style="background: rgba(10,15,30,0.5); border: 1px solid rgba(120,160,255,0.1); border-radius: 14px;">
-        <button onClick="{{ toggleMoreControls }}" style="all: unset; cursor: pointer; width: 100%; box-sizing: border-box; padding: 14px; font-size: 10px; letter-spacing: 0.2em; color: rgba(234,242,255,0.6); display: flex; justify-content: space-between; align-items: center;">
-          <span>MORE CONTROLS &amp; CONFIG</span>
-          <span style="font-size: 12px;">{{ moreControlsIcon }}</span>
-        </button>
-        
-        <sc-if value="{{ moreControlsOpen }}">
-          <div style="padding: 0 14px 14px 14px; border-top: 1px solid rgba(120,160,255,0.05); margin-top: 4px;">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px;">
-              <button onClick="{{ toggleMute }}" style="all: unset; cursor: pointer; text-align: center; padding: 10px 6px; border-radius: 8px; font-size: 10px; letter-spacing: 0.14em; border: 1px solid rgba(234,242,255,0.2); color: {{ muteColor }}; background: {{ muteBg }};">{{ muteLabel }}</button>
-              <button onClick="{{ cueProof }}" style="all: unset; cursor: pointer; text-align: center; padding: 10px 6px; border-radius: 8px; font-size: 10px; letter-spacing: 0.14em; border: 1px solid rgba(120,160,255,0.35); color: #9fc0ff; background: rgba(77,124,254,0.08);">PROOF CUE</button>
-              <button onClick="{{ doCountdown }}" style="all: unset; cursor: pointer; text-align: center; padding: 10px 6px; border-radius: 8px; font-size: 10px; letter-spacing: 0.14em; border: 1px solid rgba(155,109,255,0.45); color: #c9b3ff; background: rgba(155,109,255,0.08);">COUNTDOWN</button>
-              <button onClick="{{ voiceSim }}" style="all: unset; cursor: pointer; text-align: center; padding: 10px 6px; border-radius: 8px; font-size: 10px; letter-spacing: 0.14em; border: 1px solid rgba(94,231,255,0.4); color: #5ee7ff; background: rgba(94,231,255,0.06);">SIMULATE VOICE</button>
-              <button onClick="{{ doReset }}" style="all: unset; cursor: pointer; text-align: center; padding: 10px 6px; border-radius: 8px; font-size: 10px; letter-spacing: 0.14em; border: 1px solid rgba(234,242,255,0.15); color: rgba(234,242,255,0.55); grid-column: span 2; margin-top: 8px;">RESET SHOW</button>
-            </div>
-            
-            <button onClick="{{ toggleShowSequence }}" style="all: unset; cursor: pointer; width: 100%; box-sizing: border-box; padding: 12px 0 0 0; font-size: 10px; letter-spacing: 0.1em; color: rgba(234,242,255,0.4); text-align: center; margin-top: 10px;">
-              VIEW SHOW SEQUENCE ▾
-            </button>
-            <sc-if value="{{ showSequenceOpen }}">
-              <div style="margin-top: 8px; font-size: 9px; line-height: 1.6; letter-spacing: 0.08em; color: rgba(234,242,255,0.3); background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px;">
-                RUN OF SHOW — 1 darkness · 2 phones join · 3 proof (one kick volunteer) · 4 rhythm · 5 bass &amp; chords · 6 melodies &amp; fx · 7 voice · 8 silence + countdown · 9 final drop.
-              </div>
-            </sc-if>
-          </div>
-        </sc-if>
-      </div>
-
-      <!-- PREVIEW (EXPANDABLE) -->
-      <div style="background: rgba(10,15,30,0.5); border: 1px solid rgba(120,160,255,0.1); border-radius: 14px;">
-        <button onClick="{{ togglePreview }}" style="all: unset; cursor: pointer; width: 100%; box-sizing: border-box; padding: 14px; font-size: 10px; letter-spacing: 0.2em; color: rgba(234,242,255,0.6); display: flex; justify-content: space-between; align-items: center;">
-          <span>VISUAL PREVIEW</span>
-          <span style="font-size: 12px;">{{ previewIcon }}</span>
-        </button>
-        <sc-if value="{{ previewOpen }}">
-          <div style="padding: 0 14px 14px 14px; border-top: 1px solid rgba(120,160,255,0.05); margin-top: 4px;">
-            <canvas ref="{{ prevCvs }}" width="360" height="240" style="width: 100%; margin-top: 10px; border-radius: 10px; background: #03050c; border: 1px solid rgba(234,242,255,0.05);"></canvas>
-          </div>
-        </sc-if>
-        <sc-if value="{{ !previewOpen }}">
-          <div style="display: none;">
-            <canvas ref="{{ prevCvs }}" width="360" height="240" style="display: none;"></canvas>
-          </div>
-        </sc-if>
-      </div>
-
-    </div>
-
-    <!-- RIGHT COLUMN: VOLUNTEERS -->
+    <!-- RIGHT COLUMN: VOLUNTEERS (now just central) -->
     <div style="background: rgba(10,15,30,0.7); border: 1px solid rgba(120,160,255,0.12); border-radius: 14px; padding: 18px; display: flex; flex-direction: column;">
       
       <div style="display: flex; align-items: center; justify-content: space-between;">
         <div style="font-size: 11px; letter-spacing: 0.2em; color: rgba(234,242,255,0.5);">VOLUNTEERS</div>
-        <div style="font-size: 10px; letter-spacing: 0.1em; color: {{ voiceStatusColor }};">VOICE: {{ voiceStatusText }}</div>
       </div>
       
       <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 12px; padding-bottom: 12px; border-bottom: 1px solid rgba(120,160,255,0.1);">
@@ -124,24 +55,21 @@
         <button onClick="{{ toggleShowAllSlots }}" style="all: unset; cursor: pointer; font-size: 9px; letter-spacing: 0.1em; color: rgba(94,231,255,0.7); background: rgba(94,231,255,0.1); padding: 4px 10px; border-radius: 6px;">{{ showAllSlotsLabel }}</button>
       </div>
 
-      <!-- Add Volunteer / QR drawer -->
+      <!-- Add Volunteer / QR drawer (DEFAULT OPEN NOW) -->
       <div style="margin-top: 12px; background: rgba(234,242,255,0.02); border-radius: 8px; border: 1px solid rgba(234,242,255,0.05);">
-        <button onClick="{{ toggleQr }}" style="all: unset; cursor: pointer; width: 100%; box-sizing: border-box; padding: 12px; font-size: 10px; letter-spacing: 0.15em; color: rgba(234,242,255,0.6); text-align: center;">+ ADD VOLUNTEER (QR)</button>
-        <sc-if value="{{ qrOpen }}">
-          <div style="padding: 10px; border-top: 1px solid rgba(234,242,255,0.05); display: flex; flex-direction: column; align-items: center; gap: 10px;">
-            <sc-if value="{{ qrDataUrl }}">
-              <img src="{{ qrDataUrl }}" style="width: 140px; height: 140px; border-radius: 8px; border: 1px solid rgba(234,242,255,0.1);" />
-            </sc-if>
-            <div style="font-size: 10px; letter-spacing: 0.1em; color: rgba(234,242,255,0.5);">{{ joinUrlText }}</div>
-          </div>
-        </sc-if>
+        <div style="padding: 20px 10px; display: flex; flex-direction: column; align-items: center; gap: 10px;">
+          <div style="font-size: 10px; letter-spacing: 0.15em; color: #eaf2ff; text-align: center; font-weight: bold;">SCAN TO JOIN BAND</div>
+          <sc-if value="{{ qrDataUrl }}">
+            <img src="{{ qrDataUrl }}" style="width: 180px; height: 180px; border-radius: 8px; border: 1px solid rgba(234,242,255,0.1);" />
+          </sc-if>
+          <div style="font-size: 10px; letter-spacing: 0.1em; color: rgba(234,242,255,0.5);">{{ joinUrlText }}</div>
+        </div>
       </div>
       
       <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 16px;">
         <sc-for list="{{ visibleVolRows }}" as="v">
+          <!-- Volunteer row (copied from existing) -->
           <div style="background: rgba(234,242,255,0.03); border: 1px solid rgba(234,242,255,0.05); border-radius: 10px; overflow: hidden; opacity: {{ v.rowOpacity }};">
-            
-            <!-- Compact row header -->
             <div onClick="{{ v.toggleExpand }}" style="display: grid; grid-template-columns: 10px 1fr 60px 40px; align-items: center; gap: 10px; padding: 12px; cursor: pointer;">
               <span style="width: 8px; height: 8px; border-radius: 50%; background: {{ v.color }}; box-shadow: 0 0 8px {{ v.color }};"></span>
               <div style="min-width: 0;">
@@ -151,20 +79,14 @@
               <div style="font-size: 9px; letter-spacing: 0.1em; color: {{ v.statusColor }}; text-align: right;">{{ v.statusText }}</div>
               <div style="font-size: 12px; text-align: right; color: rgba(234,242,255,0.3);">{{ v.expandIcon }}</div>
             </div>
-
-            <!-- Energy Bar indicator -->
             <div style="height: 2px; background: rgba(234,242,255,0.04);">
               <div style="height: 100%; width: {{ v.energyPct }}; background: linear-gradient(90deg, {{ v.color }}, #eaf2ff); box-shadow: 0 0 8px {{ v.color }}; transition: width 0.25s ease;"></div>
             </div>
-
-            <!-- Expanded controls -->
             <sc-if value="{{ v.expanded }}">
               <div style="padding: 12px; border-top: 1px solid rgba(234,242,255,0.05); background: rgba(0,0,0,0.15); display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
-                
                 <select value="{{ v.role }}" onChange="{{ v.onRole }}" style="background: rgba(234,242,255,0.05); border: 1px solid rgba(234,242,255,0.1); border-radius: 6px; padding: 6px 8px; color: rgba(234,242,255,0.7); font-family: 'Space Grotesk', sans-serif; font-size: 9px; letter-spacing: 0.1em; cursor: pointer; flex: 1; min-width: 120px;">
                   <sc-for list="{{ roleNames }}" as="rn"><option value="{{ rn }}" style="background: #0a0f1e;">{{ rn }}</option></sc-for>
                 </select>
-
                 <button onClick="{{ v.doTap }}" style="all: unset; cursor: pointer; font-size: 9px; letter-spacing: 0.1em; padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(94,231,255,0.35); color: #5ee7ff; background: rgba(94,231,255,0.05);">TAP</button>
                 <button onClick="{{ v.toggleMute }}" style="all: unset; cursor: pointer; font-size: 9px; letter-spacing: 0.1em; padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(234,242,255,0.15); color: {{ v.muteColor }}; background: rgba(234,242,255,0.02);">{{ v.muteTxt }}</button>
                 <button onClick="{{ v.toggleEnable }}" style="all: unset; cursor: pointer; font-size: 9px; letter-spacing: 0.1em; padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(234,242,255,0.15); color: {{ v.enColor }}; background: rgba(234,242,255,0.02);">{{ v.enTxt }}</button>
@@ -173,12 +95,6 @@
           </div>
         </sc-for>
       </div>
-      
-      <sc-if value="{{ moreControlsOpen }}">
-        <div style="margin-top: 24px; text-align: center;">
-           <button onClick="{{ clearVolunteers }}" style="all: unset; cursor: pointer; font-size: 9px; letter-spacing: 0.14em; padding: 8px 14px; border-radius: 8px; border: 1px solid rgba(255,94,138,0.3); color: #ff9cb6; background: rgba(255,94,138,0.05);">CLEAR ALL VOLUNTEERS</button>
-        </div>
-      </sc-if>
 
     </div>
   </div>
@@ -191,16 +107,11 @@ class Component extends DCLogic {
     energies: {}, 
     qrDataUrl: '', 
     joinUrlText: '',
-    moreControlsOpen: false,
     showAllSlots: false,
-    qrOpen: false,
-    previewOpen: false,
-    showSequenceOpen: false,
     expandedVolId: null
   };
   refs = {};
   R(n) { return this.refs[n] || (this.refs[n] = React.createRef()); }
-  SCENE_NAMES = ['DARKNESS', 'CONNECTION', 'PROOF', 'RHYTHM', 'BASS', 'MELODY', 'VOICE', 'SILENCE', 'FINAL DROP'];
   
   componentDidMount() {
     fetch('/api/qr').then(r => r.json()).then(d => {
@@ -220,20 +131,12 @@ class Component extends DCLogic {
         }
       });
     });
-    this._draw = setInterval(() => this.drawPreview(), 120);
   }
   
   componentWillUnmount() {
-    clearInterval(this._draw);
     if (this.unsub) this.unsub(); if (this.unmsg) this.unmsg();
   }
   
-  drawPreview() {
-    const cvs = this.R('prevCvs').current;
-    if (!cvs || !this.state.st || !this.state.previewOpen) return;
-    const g = cvs.getContext('2d'), W = cvs.width, H = cvs.height;
-    g.clearRect(0, 0, W, H);
-    g.fillStyle = '#03050c'; g.fillRect(0, 0, W, H);
     const cx = W / 2, cy = H / 2 - 6, R = 74;
     const st = this.state.st, E = this.state.energies;
     let avg = 0;
@@ -275,25 +178,9 @@ class Component extends DCLogic {
   
   renderVals() {
     const st = this.state.st;
-    if (!st) return { sceneRows: [], visibleVolRows: [], roleNames: [], liveText: 'CONNECTING…', liveColor: 'rgba(234,242,255,0.4)', joinedText: '0', voiceStatusText: '', voiceStatusColor: '', prevCvs: this.R('prevCvs') };
+    if (!st) return { started: false, visibleVolRows: [], roleNames: [], liveText: 'CONNECTING…', liveColor: 'rgba(234,242,255,0.4)', joinedText: '0', voiceStatusText: '', voiceStatusColor: '' };
     
     const projLive = this._lastBeat && Date.now() - this._lastBeat < 4000;
-    
-    // Horizontal Scene Progress
-    const sceneRows = this.SCENE_NAMES.map((label, i) => {
-      const active = st.scene === i + 1;
-      const past = st.scene > i + 1;
-      return {
-        num: String(i + 1), label,
-        go: () => this.store.patch({ scene: i + 1 }),
-        border: active ? 'rgba(94,231,255,0.6)' : 'rgba(234,242,255,0.07)',
-        bg: active ? 'rgba(94,231,255,0.08)' : 'transparent',
-        numColor: active ? '#5ee7ff' : (past ? 'rgba(94,231,255,0.5)' : 'rgba(234,242,255,0.35)'),
-        color: active ? '#eaf2ff' : (past ? 'rgba(234,242,255,0.7)' : 'rgba(234,242,255,0.55)'),
-        opacity: active || past ? 1 : 0.6
-      }
-    });
-
     const E = this.state.energies;
     
     const allVols = st.vols.map(v => {
@@ -327,39 +214,11 @@ class Component extends DCLogic {
     }
     
     return {
-      prevCvs: this.R('prevCvs'),
-      sceneRows, 
+      started: st.started,
+      togglePlay: () => this.store.patch({ started: !st.started }),
       visibleVolRows,
       roleNames: this.ROLE_LIST ? this.ROLE_LIST.map(r => r.role) : [],
       
-      prev: () => this.store.patch({ scene: Math.max(1, st.scene - 1) }),
-      next: () => this.store.patch({ scene: Math.min(9, st.scene + 1) }),
-      toggleDemo: () => this.store.patch({ demo: !st.demo }),
-      demoLabel: st.demo ? 'START / PAUSE SHOW (DEMO ON)' : 'START SHOW (DEMO MODE)',
-      demoColor: st.demo ? '#04060e' : '#5ee7ff',
-      demoBg: st.demo ? '#5ee7ff' : 'rgba(94,231,255,0.06)',
-      
-      toggleMute: () => this.store.patch({ muted: !st.muted }),
-      muteLabel: st.muted ? 'UNMUTE ALL' : 'MUTE ALL',
-      muteColor: st.muted ? '#ff9cb6' : '#eaf2ff',
-      muteBg: st.muted ? 'rgba(255,94,138,0.12)' : 'rgba(234,242,255,0.04)',
-      
-      cueProof: () => { this.store.patch({ scene: 3 }); this.store.send('proof', {}); },
-      doCountdown: () => this.store.patch({ scene: 8 }),
-      doDrop: () => this.store.patch({ scene: 9 }),
-      
-      eStop: () => { 
-        if (window.confirm("EMERGENCY STOP will mute all audio and rewind to Scene 1 immediately. Are you sure?")) {
-          this.store.patch({ muted: true, scene: 1, demo: false }); 
-        }
-      },
-      doReset: () => {
-        if (window.confirm("Are you sure you want to RESET the entire show?")) {
-          this.store.reset();
-        }
-      },
-      
-      voiceSim: () => this.store.send('voiceSim', {}),
       voiceStatusText: st.voiceStatus === 'live' ? 'IN MIX' : 'WAITING',
       voiceStatusColor: st.voiceStatus === 'live' ? '#5ee7ff' : 'rgba(234,242,255,0.4)',
       
@@ -377,22 +236,8 @@ class Component extends DCLogic {
       qrDataUrl: this.state.qrDataUrl,
       joinUrlText: this.state.joinUrlText,
       
-      moreControlsOpen: this.state.moreControlsOpen,
-      moreControlsIcon: this.state.moreControlsOpen ? '▴' : '▾',
-      toggleMoreControls: () => this.setState({ moreControlsOpen: !this.state.moreControlsOpen }),
-      
       showAllSlotsLabel: this.state.showAllSlots ? 'HIDE OPEN SLOTS' : 'VIEW OPEN SLOTS',
-      toggleShowAllSlots: () => this.setState({ showAllSlots: !this.state.showAllSlots }),
-      
-      qrOpen: this.state.qrOpen,
-      toggleQr: () => this.setState({ qrOpen: !this.state.qrOpen }),
-      
-      previewOpen: this.state.previewOpen,
-      previewIcon: this.state.previewOpen ? '▴' : '▾',
-      togglePreview: () => this.setState({ previewOpen: !this.state.previewOpen }),
-      
-      showSequenceOpen: this.state.showSequenceOpen,
-      toggleShowSequence: () => this.setState({ showSequenceOpen: !this.state.showSequenceOpen })
+      toggleShowAllSlots: () => this.setState({ showAllSlots: !this.state.showAllSlots })
     };
   }
 }
