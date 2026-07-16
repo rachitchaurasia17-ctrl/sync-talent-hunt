@@ -16,6 +16,14 @@
 <style>
   html, body { margin: 0; padding: 0; background: #03050c; overflow: hidden; }
   a { color: #5ee7ff; text-decoration: none; } a:hover { color: #eaf2ff; }
+  
+  .hint-left { position: absolute; left: 24px; bottom: 18px; font-size: 11px; letter-spacing: 0.18em; color: rgba(234,242,255,0.26); pointer-events: none; }
+  .hint-right { position: absolute; right: 24px; bottom: 18px; font-size: 11px; letter-spacing: 0.3em; color: rgba(94,231,255,0.3); pointer-events: none; }
+  
+  @media (max-width: 600px) {
+    .hint-left { left: 0; right: 0; bottom: 32px; text-align: center; font-size: 8px; width: 100%; }
+    .hint-right { left: 0; right: 0; bottom: 16px; text-align: center; font-size: 9px; width: 100%; }
+  }
 </style>
 </helmet>
 <div data-screen-label="SYNC Projector" style="position: fixed; inset: 0; background: radial-gradient(120% 90% at 50% 42%, #060a18 0%, #03050c 55%, #020307 100%); font-family: 'Space Grotesk', sans-serif; color: #eaf2ff; user-select: none;">
@@ -64,8 +72,8 @@
     </div>
   </div>
 
-  <div ref="{{ hintBar }}" style="position: absolute; left: 24px; bottom: 18px; font-size: 11px; letter-spacing: 0.18em; color: rgba(234,242,255,0.26); pointer-events: none;">{{ hintText }}</div>
-  <div style="position: absolute; right: 24px; bottom: 18px; font-size: 11px; letter-spacing: 0.3em; color: rgba(94,231,255,0.3); pointer-events: none;">{{ sceneTagText }}</div>
+  <div ref="{{ hintBar }}" class="hint-left">{{ hintText }}</div>
+  <div class="hint-right">{{ sceneTagText }}</div>
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;particleDensity&quot;: {&quot;editor&quot;: &quot;range&quot;, &quot;default&quot;: 1, &quot;min&quot;: 0.3, &quot;max&quot;: 2, &quot;step&quot;: 0.1, &quot;tsType&quot;: &quot;number&quot;, &quot;section&quot;: &quot;Atmosphere&quot;}, &quot;showHints&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Stage&quot;}}">

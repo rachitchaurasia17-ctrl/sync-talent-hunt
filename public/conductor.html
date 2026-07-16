@@ -18,30 +18,42 @@
   a { color: #5ee7ff; text-decoration: none; } a:hover { color: #eaf2ff; }
   ::-webkit-scrollbar { width: 5px; height: 5px; } ::-webkit-scrollbar-thumb { background: rgba(120,160,255,0.25); border-radius: 3px; }
   select { outline: none; }
+  
+  .app-wrap { padding: 16px 24px; }
+  .start-btn { padding: 24px 60px; font-size: 24px; border-radius: 20px; }
+  .header-tag { font-size: 9px; padding: 4px 10px; }
+  .header-link { font-size: 10px; padding: 6px 12px; }
+  
+  @media (max-width: 600px) {
+    .app-wrap { padding: 12px 12px; gap: 12px; }
+    .start-btn { padding: 16px 24px !important; font-size: 18px !important; border-radius: 12px !important; }
+    .header-tag, .header-link { font-size: 8px !important; padding: 4px 6px !important; }
+    .title-text { font-size: 12px !important; }
+  }
 </style>
 </helmet>
-<div data-screen-label="Conductor Console" style="min-height: 100vh; background: radial-gradient(100% 80% at 50% 0%, #070b1a 0%, #04060f 60%); font-family: 'Space Grotesk', sans-serif; color: #eaf2ff; box-sizing: border-box; padding: 16px 24px; display: flex; flex-direction: column; gap: 20px;">
+<div class="app-wrap" data-screen-label="Conductor Console" style="min-height: 100vh; background: radial-gradient(100% 80% at 50% 0%, #070b1a 0%, #04060f 60%); font-family: 'Space Grotesk', sans-serif; color: #eaf2ff; box-sizing: border-box; display: flex; flex-direction: column; gap: 20px;">
   
   <!-- 1. COMPACT TOP HEADER -->
   <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
-    <div style="font-family: 'Unbounded', sans-serif; font-weight: 600; font-size: 15px; letter-spacing: 0.28em; color: #eaf2ff;">SYNC<span style="color: #5ee7ff;"> · CONDUCTOR</span></div>
-    <div style="font-size: 9px; letter-spacing: 0.26em; color: rgba(234,242,255,0.3); border: 1px solid rgba(234,242,255,0.1); border-radius: 999px; padding: 4px 10px;">PRIVATE — NEVER PROJECTED</div>
+    <div class="title-text" style="font-family: 'Unbounded', sans-serif; font-weight: 600; font-size: 15px; letter-spacing: 0.28em; color: #eaf2ff;">SYNC<span style="color: #5ee7ff;"> · CONDUCTOR</span></div>
+    <div class="header-tag" style="letter-spacing: 0.26em; color: rgba(234,242,255,0.3); border: 1px solid rgba(234,242,255,0.1); border-radius: 999px;">PRIVATE — NEVER PROJECTED</div>
     <div style="flex: 1;"></div>
-    <div style="font-size: 10px; letter-spacing: 0.2em; color: {{ liveColor }};">{{ liveText }}</div>
-    <a href="/projector" target="_blank" style="font-size: 10px; letter-spacing: 0.16em; border: 1px solid rgba(94,231,255,0.4); border-radius: 6px; padding: 6px 12px;">OPEN PROJECTOR ↗</a>
+    <div class="header-tag" style="letter-spacing: 0.2em; color: {{ liveColor }};">{{ liveText }}</div>
+    <a class="header-link" href="/projector" target="_blank" style="letter-spacing: 0.16em; border: 1px solid rgba(94,231,255,0.4); border-radius: 6px;">OPEN PROJECTOR ↗</a>
   </div>
 
   <!-- 2. BIG START/STOP BUTTON -->
   <div style="margin-top: 40px; text-align: center;">
     <sc-if value="{{ !started }}">
-      <button onClick="{{ togglePlay }}" style="all: unset; cursor: pointer; padding: 24px 60px; font-family: 'Unbounded', sans-serif; font-size: 24px; font-weight: 600; letter-spacing: 0.2em; background: rgba(94,231,255,0.1); border: 2px solid #5ee7ff; border-radius: 20px; color: #5ee7ff; box-shadow: 0 0 20px rgba(94,231,255,0.3);">START SHOW</button>
+      <button class="start-btn" onClick="{{ togglePlay }}" style="all: unset; cursor: pointer; font-family: 'Unbounded', sans-serif; font-weight: 600; letter-spacing: 0.2em; background: rgba(94,231,255,0.1); border: 2px solid #5ee7ff; color: #5ee7ff; box-shadow: 0 0 20px rgba(94,231,255,0.3); box-sizing: border-box; max-width: 100%;">START SHOW</button>
     </sc-if>
     <sc-if value="{{ started }}">
-      <button onClick="{{ togglePlay }}" style="all: unset; cursor: pointer; padding: 24px 60px; font-family: 'Unbounded', sans-serif; font-size: 24px; font-weight: 600; letter-spacing: 0.2em; background: rgba(255,94,138,0.1); border: 2px solid #ff9cb6; border-radius: 20px; color: #ff9cb6; box-shadow: 0 0 20px rgba(255,94,138,0.3);">STOP SHOW</button>
+      <button class="start-btn" onClick="{{ togglePlay }}" style="all: unset; cursor: pointer; font-family: 'Unbounded', sans-serif; font-weight: 600; letter-spacing: 0.2em; background: rgba(255,94,138,0.1); border: 2px solid #ff9cb6; color: #ff9cb6; box-shadow: 0 0 20px rgba(255,94,138,0.3); box-sizing: border-box; max-width: 100%;">STOP SHOW</button>
     </sc-if>
   </div>
 
-  <div style="display: grid; grid-template-columns: minmax(350px, 1fr); max-width: 800px; margin: 0 auto; width: 100%; gap: 20px; align-items: start; margin-top: 40px;">
+  <div style="display: grid; grid-template-columns: minmax(min(100%, 350px), 1fr); max-width: 800px; margin: 0 auto; width: 100%; gap: 20px; align-items: start; margin-top: 40px;">
     
     <!-- RIGHT COLUMN: VOLUNTEERS (now just central) -->
     <div style="background: rgba(10,15,30,0.7); border: 1px solid rgba(120,160,255,0.12); border-radius: 14px; padding: 18px; display: flex; flex-direction: column;">

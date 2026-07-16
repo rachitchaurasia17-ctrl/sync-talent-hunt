@@ -69,21 +69,11 @@
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 390, &quot;height&quot;: 780}}">
 class Component extends DCLogic {
-  state = { vol: null, scene: 1, countdown: '', energy: 0, charge: 0, lost: false, recState: 'idle', slots: 10, tick: 0 };
+  state = { vol: null, started: false, countdown: '', energy: 0, charge: 0, lost: false, recState: 'idle', slots: 10, tick: 0 };
   refs = {};
   R(n) { return this.refs[n] || (this.refs[n] = React.createRef()); }
-  gate(role, scene) {
-    if (scene === 9) return true;
-    if (scene < 3 || scene === 8) return false;
-    switch (role) {
-      case 'KICK': return scene >= 3;
-      case 'SNARE': case 'HI-HATS': return scene >= 4;
-      case 'BASS': case 'CHORDS': return scene >= 5;
-      case 'MAIN MELODY': case 'SUPPORT MELODY': case 'EFFECTS': return scene >= 6;
-      case 'VOICE FX': return scene >= 7;
-      case 'FINAL ENERGY': return false;
-    }
-    return false;
+  gate(role) {
+    return this.state.started;
   }
   componentDidMount() {
     import('./sync-state.js').then(S => {
@@ -99,7 +89,7 @@ class Component extends DCLogic {
           this._lastBeat = Date.now();
           if (this.state.vol) {
             const mine = m.list.find(x => x.id === this.state.vol.id);
-            if (mine) this.setState({ energy: mine.energy, charge: mine.charge, scene: m.scene, countdown: m.countdown, lost: false });
+            if (mine) this.setState({ energy: mine.energy, charge: mine.charge, started: m.started, countdown: m.countdown, lost: false });
           }
         }
       });
@@ -118,11 +108,11 @@ class Component extends DCLogic {
     if (st.resetCount !== this._lastReset) {
       this._lastReset = st.resetCount;
       localStorage.removeItem('sync-my-vol');
-      this.setState({ vol: null, energy: 0, charge: 0, scene: 1 });
+      this.setState({ vol: null, energy: 0, charge: 0, started: false });
       return;
     }
     const slots = st.vols.filter(v => !v.connected).length;
-    const patch = { scene: st.scene, slots };
+    const patch = { started: st.started, slots };
     if (this.state.vol) patch.vol = st.vols[this.state.vol.id];
     this.setState(patch);
   }
@@ -149,17 +139,17 @@ class Component extends DCLogic {
     }
   };
   status() {
-    const v = this.state.vol, s = this.state.scene;
+    const v = this.state.vol, started = this.state.started;
     if (!v) return ['', ''];
     if (this.state.lost) return ['CONNECTION LOST', 'rgba(255,94,138,0.9)'];
     if (!v.enabled) return ['DISABLED', 'rgba(234,242,255,0.35)'];
     if (v.muted) return ['MUTED', 'rgba(255,94,138,0.8)'];
-    if (s === 9 || (s === 8 && this.state.countdown === 'NOW')) return ['FINAL DROP', '#ffd166'];
-    if (s === 8) return ['STOP', 'rgba(234,242,255,0.7)'];
-    const live = this.gate(v.role, s);
-    if (!live) return ['WAIT', 'rgba(234,242,255,0.45)'];
-    if (this._wasLive !== s) { this._wasLive = s; this._liveAt = Date.now(); }
-    if (Date.now() - (this._liveAt || 0) < 4000) return ['YOUR TURN', v.color];
+    
+    const live = this.gate(v.role) && started;
+    if (!live) return ['WAITING FOR CONDUCTOR...', 'rgba(234,242,255,0.45)'];
+    
+    if (this._wasLive !== started) { this._wasLive = started; this._liveAt = Date.now(); }
+    if (Date.now() - (this._liveAt || 0) < 4000) return ['YOUR TURN!', v.color];
     if (this.state.energy < 0.32) return ['KEEP THE ENERGY ALIVE', '#ffd166'];
     return ['TAP TO POWER YOUR LAYER', 'rgba(234,242,255,0.6)'];
   }
@@ -219,19 +209,19 @@ class Component extends DCLogic {
   renderVals() {
     const v = this.state.vol;
     const [statusText, statusColor] = this.status();
-    const live = v && this.gate(v.role, this.state.scene) && v.enabled && !v.muted && !this.state.lost;
+    const live = v && this.gate(v.role) && v.enabled && !v.muted && !this.state.lost && this.state.started;
     const c = v ? v.color : '#5ee7ff';
     const ring = this.R('ringEl').current;
-    if (ring) ring.style.strokeDashoffset = String(295.3 * (1 - (live || this.state.scene === 9 ? this.state.energy : 0)));
-    const drop = this.state.scene === 9 || this.state.countdown === 'NOW';
+    if (ring) ring.style.strokeDashoffset = String(295.3 * (1 - (live ? this.state.energy : 0)));
+    
     return {
       joined: !!v, notJoined: !v,
       myName: v ? v.name : '', myRole: v ? v.role : '', roleColor: c, isVoice: !!v && v.role === 'VOICE FX',
-      btnText: drop ? 'TAP!' : !live ? 'WAIT' : 'TAP',
-      btnTextColor: live || drop ? '#eaf2ff' : 'rgba(234,242,255,0.3)',
-      btnGlow: live || drop ? c + '3d' : 'rgba(94,231,255,0.06)',
-      btnBorder: live || drop ? c + 'aa' : 'rgba(120,160,255,0.2)',
-      btnShadow: live || drop ? c + '55' : 'rgba(94,231,255,0.08)',
+      btnText: !live ? 'WAIT' : 'TAP',
+      btnTextColor: live ? '#eaf2ff' : 'rgba(234,242,255,0.3)',
+      btnGlow: live ? c + '3d' : 'rgba(94,231,255,0.06)',
+      btnBorder: live ? c + 'aa' : 'rgba(120,160,255,0.2)',
+      btnShadow: live ? c + '55' : 'rgba(94,231,255,0.08)',
       statusText, statusColor,
       recLabel: this.state.recState === 'rec' ? 'LISTENING…' : this.state.recState === 'sent' ? 'SENT ✓' : 'RECORD 2S',
       onTap: this.onTap, onJoin: this.onJoin, recordVoice: this.recordVoice, simVoice: this.simVoice,
